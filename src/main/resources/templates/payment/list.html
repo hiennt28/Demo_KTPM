@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thanh Toán Giải Thưởng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+    <h2>Thanh Toán Giải Thưởng</h2>
+    <hr>
+
+    <div th:if="${errorMsg}" class="alert alert-danger" th:text="${errorMsg}"></div>
+
+    <div class="card p-3 mb-3">
+        <h6 class="fw-bold">1. Chọn mùa giải</h6>
+        <div class="d-flex gap-2 flex-wrap">
+            <a th:each="s : ${seasons}"
+               th:href="@{/payment/season/{id}(id=${s.id})}"
+               th:text="${s.seasonName}"
+               th:classappend="${selectedSeason != null and s.id == selectedSeason.id} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+            </a>
+        </div>
+    </div>
+
+    <div th:if="${selectedSeason}" class="alert alert-info">
+        Đang xem thanh toán cho mùa giải:
+        <strong th:text="${selectedSeason.seasonName}"></strong>
+    </div>
+
+    <div th:if="${seasonAwards}">
+        <h6 class="fw-bold">2. Danh sách giải thưởng theo mùa</h6>
+        <table class="table table-bordered bg-white">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Tên giải thưởng</th>
+                <th>Loại giải</th>
+                <th>Giá trị (VNĐ)</th>
+                <th>Điều kiện</th>
+                <th>Xem kết quả</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a, i : ${seasonAwards}">
+                <td th:text="${i.count}"></td>
+                <td th:text="${a.awardName}"></td>
+                <td>
+                    <span th:text="${a.awardType}"
+                          th:class="${a.awardType == 'CÁ NHÂN'} ? 'badge bg-info text-dark' : 'badge bg-primary'">
+                    </span>
+                </td>
+                <td th:text="${#numbers.formatDecimal(a.prizeAmount,0,'COMMA',0,'POINT')}"></td>
+                <td th:text="${a.conditions}"></td>
+                <td>
+                    <button type="button"
+                            class="btn btn-sm btn-success js-open-results"
+                            th:attr="data-award-id=${a.id},data-award-name=${a.awardName}">
+                        Xem người nhận
+                    </button>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(seasonAwards)}">
+                <td colspan="6" class="text-center text-muted">
+                    Không có giải thưởng theo mùa cho lựa chọn này.
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${matches}" class="mt-4">
+        <h6 class="fw-bold">3. Chọn trận đấu để xem giải thưởng theo trận</h6>
+        <table class="table table-bordered bg-white">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Trận đấu</th>
+                <th>Thời gian</th>
+                <th>Sân</th>
+                <th>Thao tác</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="m, i : ${matches}">
+                <td th:text="${i.count}"></td>
+                <td th:text="${matchDisplayNames[m.id]}"></td>
+                <td th:text="${m.matchDate != null ? #temporals.format(m.matchDate, 'dd/MM/yyyy HH:mm') : ''}"></td>
+                <td th:text="${m.stadium}"></td>
+                <td>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary js-open-match-awards"
+                            th:classappend="${selectedMatchId != null and selectedMatchId == m.id} ? ' btn-primary text-white' : ''"
+                            th:attr="data-match-id=${m.id},data-match-name=${matchDisplayNames[m.id]}">
+                        Xem giải theo trận
+                    </button>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(matches)}">
+                <td colspan="5" class="text-center text-muted">
+                    Không có trận đấu nào thuộc mùa giải này.
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="matchAwardsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="matchAwardsModalLabel">Giải thưởng theo trận</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="matchAwardsModalBody">
+                <div class="text-center py-4 text-muted">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="awardResultsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="awardResultsModalLabel">Danh sách người nhận giải</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="awardResultsModalBody">
+                <div class="text-center py-4 text-muted">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const matchAwardsModalElement = document.getElementById('matchAwardsModal');
+    const matchAwardsModalBody = document.getElementById('matchAwardsModalBody');
+    const matchAwardsModalLabel = document.getElementById('matchAwardsModalLabel');
+    const matchAwardsModal = new bootstrap.Modal(matchAwardsModalElement);
+
+    const resultsModalElement = document.getElementById('awardResultsModal');
+    const resultsModalBody = document.getElementById('awardResultsModalBody');
+    const resultsModalLabel = document.getElementById('awardResultsModalLabel');
+    const resultsModal = new bootstrap.Modal(resultsModalElement);
+
+    async function openMatchAwardsModal(matchId, matchName) {
+        matchAwardsModalLabel.textContent = 'Giải thưởng theo trận: ' + matchName;
+        matchAwardsModalBody.innerHTML = '<div class="text-center py-4 text-muted">Đang tải dữ liệu...</div>';
+        matchAwardsModal.show();
+
+        try {
+            const response = await fetch('/payment/match/' + matchId + '/modal', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Không thể tải danh sách giải thưởng theo trận.');
+            }
+
+            matchAwardsModalBody.innerHTML = await response.text();
+        } catch (error) {
+            matchAwardsModalBody.innerHTML = '<div class="alert alert-danger mb-0">' + error.message + '</div>';
+        }
+    }
+
+    async function openResultsModal(awardId, awardName) {
+        resultsModalLabel.textContent = 'Người nhận giải: ' + awardName;
+        resultsModalBody.innerHTML = '<div class="text-center py-4 text-muted">Đang tải dữ liệu...</div>';
+        resultsModal.show();
+
+        try {
+            const response = await fetch('/payment/award/' + awardId + '/modal', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Không thể tải danh sách người nhận giải.');
+            }
+
+            resultsModalBody.innerHTML = await response.text();
+        } catch (error) {
+            resultsModalBody.innerHTML = '<div class="alert alert-danger mb-0">' + error.message + '</div>';
+        }
+    }
+
+    document.addEventListener('click', event => {
+        const matchButton = event.target.closest('.js-open-match-awards');
+        if (matchButton) {
+            openMatchAwardsModal(matchButton.dataset.matchId, matchButton.dataset.matchName);
+            return;
+        }
+
+        const resultsButton = event.target.closest('.js-open-results');
+        if (resultsButton) {
+            openResultsModal(resultsButton.dataset.awardId, resultsButton.dataset.awardName);
+        }
+    });
+</script>
+</body>
+</html>

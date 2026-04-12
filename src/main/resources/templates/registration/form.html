@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chọn Đội Hình</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table-panel {
+            max-height: 500px;
+            overflow: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .table-panel thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .registration-table {
+            font-size: 0.95rem;
+        }
+
+        .registration-table th,
+        .registration-table td {
+            padding: 0.6rem 0.55rem;
+            vertical-align: middle;
+        }
+
+        .status-cell {
+            white-space: nowrap;
+        }
+
+        .section-title {
+            font-size: 1.05rem;
+            margin-bottom: 0;
+        }
+
+        .hint-text {
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container-xxl mt-3">
+
+    <div class="alert alert-info">
+        <strong>Trận đấu:</strong>
+        <span th:text="${matchDetails[0].team.teamName}"></span> vs
+        <span th:text="${matchDetails[1].team.teamName}"></span>
+        -
+        <span th:text="${#temporals.format(match.matchDate, 'dd/MM/yyyy HH:mm')}"></span>
+        | Sân: <span th:text="${match.stadium}"></span>
+        | Đội đăng ký: <span th:text="${selectedMatchDetail.team.teamName}"></span>
+    </div>
+
+    <div th:if="${errorMsg}" class="alert alert-danger" th:text="${errorMsg}"></div>
+
+    <form th:action="@{/registration/match-detail/{id}/confirm(id=${selectedMatchDetail.id})}"
+          method="post">
+
+        <div class="row g-3">
+            <div class="col-12 col-xl-6">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <h4 class="section-title">Cầu thủ đá chính</h4>
+                    <span class="badge bg-primary fs-6" id="startCount">0</span>
+                    <span class="fs-5">/11</span>
+                </div>
+
+                <p class="text-muted hint-text mb-2">
+                    Chọn đúng 11 người | Thẻ vàng | Đình chỉ | Chấn thương
+                </p>
+
+                <div class="table-panel">
+                    <table class="table table-hover align-middle mb-0 registration-table">
+                        <thead class="table-dark">
+                        <tr>
+                            <th style="width: 58px;">Chọn</th>
+                            <th style="width: 78px;">Số áo</th>
+                            <th>Họ tên</th>
+                            <th style="width: 120px;">Vị trí</th>
+                            <th style="width: 110px;">Quốc tịch</th>
+                            <th style="width: 150px;">Trạng thái</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="pc : ${contracts}"
+                            th:classappend="${pc.redCards > 0 or pc.yellowCards >= 3 or pc.healthStatus != 'BÌNH THƯỜNG'} ? 'table-danger' : ''">
+                            <td>
+                                <input type="checkbox"
+                                       name="startingContractIds"
+                                       th:value="${pc.id}"
+                                       th:disabled="${pc.redCards > 0 or pc.yellowCards >= 3 or pc.healthStatus != 'BÌNH THƯỜNG'}"
+                                       th:attr="data-contract-id=${pc.id},data-group='start',data-blocked=${pc.redCards > 0 or pc.yellowCards >= 3 or pc.healthStatus != 'BÌNH THƯỜNG'}"
+                                       onchange="handleSelectionChange(this)"
+                                       class="form-check-input start-cb">
+                            </td>
+                            <td th:text="${pc.jerseyNumber}"></td>
+                            <td th:text="${pc.player.fullName}"></td>
+                            <td th:text="${pc.player.position}"></td>
+                            <td th:text="${pc.player.nationality}"></td>
+                            <td class="status-cell">
+                                <span th:if="${pc.yellowCards > 0}"
+                                      th:text="${'Thẻ vàng x' + pc.yellowCards}"></span>
+                                <span th:if="${pc.yellowCards > 0 and (pc.redCards > 0 or pc.healthStatus != 'BÌNH THƯỜNG')}"> | </span>
+                                <span th:if="${pc.redCards > 0}">Đình chỉ</span>
+                                <span th:if="${pc.redCards > 0 and pc.healthStatus != 'BÌNH THƯỜNG'}"> | </span>
+                                <span th:if="${pc.healthStatus == 'CHẤN THƯƠNG'}">Chấn thương</span>
+                                <span th:if="${pc.yellowCards == 0 and pc.redCards == 0 and pc.healthStatus == 'BÌNH THƯỜNG'}"
+                                      class="text-success">Sẵn sàng</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <h4 class="section-title">Cầu thủ dự bị</h4>
+                    <span class="badge bg-secondary fs-6" id="subCount">0</span>
+                </div>
+
+                <p class="text-muted hint-text mb-2">
+                    Thẻ vàng | Đình chỉ | Chấn thương
+                </p>
+
+                <div class="table-panel">
+                    <table class="table table-hover align-middle mb-0 registration-table">
+                        <thead class="table-secondary">
+                        <tr>
+                            <th style="width: 58px;">Chọn</th>
+                            <th style="width: 78px;">Số áo</th>
+                            <th>Họ tên</th>
+                            <th style="width: 120px;">Vị trí</th>
+                            <th style="width: 150px;">Trạng thái</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="pc : ${contracts}">
+                            <td>
+                                <input type="checkbox"
+                                       name="substituteContractIds"
+                                       th:value="${pc.id}"
+                                       th:attr="data-contract-id=${pc.id},data-group='sub',data-blocked=false"
+                                       onchange="handleSelectionChange(this)"
+                                       class="form-check-input sub-cb">
+                            </td>
+                            <td th:text="${pc.jerseyNumber}"></td>
+                            <td th:text="${pc.player.fullName}"></td>
+                            <td th:text="${pc.player.position}"></td>
+                            <td class="status-cell">
+                                <span th:if="${pc.yellowCards > 0}"
+                                      th:text="${'Thẻ vàng x' + pc.yellowCards}"></span>
+                                <span th:if="${pc.yellowCards > 0 and (pc.redCards > 0 or pc.healthStatus != 'BÌNH THƯỜNG')}"> | </span>
+                                <span th:if="${pc.redCards > 0}">Đình chỉ</span>
+                                <span th:if="${pc.redCards > 0 and pc.healthStatus != 'BÌNH THƯỜNG'}"> | </span>
+                                <span th:if="${pc.healthStatus == 'CHẤN THƯƠNG'}">Chấn thương</span>
+                                <span th:if="${pc.yellowCards == 0 and pc.redCards == 0 and pc.healthStatus == 'BÌNH THƯỜNG'}"
+                                      class="text-success">Bình thường</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-success btn-lg"
+                    onclick="return validate()">
+                Xác nhận đăng ký
+            </button>
+            <a href="/registration" class="btn btn-secondary btn-lg">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function countStarting() {
+        document.getElementById('startCount').textContent =
+            document.querySelectorAll('.start-cb:checked').length;
+    }
+
+    function countSubs() {
+        document.getElementById('subCount').textContent =
+            document.querySelectorAll('.sub-cb:checked').length;
+    }
+
+    function syncCounterparts() {
+        const checkboxes = document.querySelectorAll('[data-contract-id]');
+
+        checkboxes.forEach(cb => {
+            const contractId = cb.dataset.contractId;
+            const group = cb.dataset.group;
+            const counterpart = document.querySelector(
+                '[data-contract-id="' + contractId + '"][data-group="' + (group === 'start' ? 'sub' : 'start') + '"]'
+            );
+
+            if (!counterpart) {
+                return;
+            }
+
+            const counterpartBlocked = counterpart.dataset.blocked === 'true';
+            const shouldDisableCounterpart = cb.checked || counterpartBlocked;
+
+            if (cb.checked) {
+                counterpart.checked = false;
+            }
+
+            counterpart.disabled = shouldDisableCounterpart;
+        });
+
+        countStarting();
+        countSubs();
+    }
+
+    function handleSelectionChange(changedCheckbox) {
+        if (changedCheckbox.checked) {
+            const counterpartGroup = changedCheckbox.dataset.group === 'start' ? 'sub' : 'start';
+            const counterpart = document.querySelector(
+                '[data-contract-id="' + changedCheckbox.dataset.contractId + '"][data-group="' + counterpartGroup + '"]'
+            );
+
+            if (counterpart) {
+                counterpart.checked = false;
+            }
+        }
+
+        syncCounterparts();
+    }
+
+    function validate() {
+        const n = document.querySelectorAll('.start-cb:checked').length;
+        if (n !== 11) {
+            alert('Phải chọn đúng 11 cầu thủ đá chính! (Hiện chọn: ' + n + ')');
+            return false;
+        }
+        return confirm('Xác nhận đăng ký đội hình cho trận đấu này?');
+    }
+
+    window.onload = syncCounterparts;
+</script>
+</body>
+</html>

@@ -6,9 +6,9 @@ import com.vdqg.entity.AwardResult;
 import com.vdqg.entity.Match;
 import com.vdqg.entity.Season;
 import com.vdqg.repository.AwardPaymentRepository;
-import com.vdqg.repository.AwardRepository;
-import com.vdqg.repository.AwardResultRepository;
 import com.vdqg.repository.MatchRepository;
+import com.vdqg.repository.SeasonRepository;
+import com.vdqg.util.MatchDisplayNameUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,27 +16,29 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class AwardPaymentService {
 
-    private static final String UNKNOWN_TEAM = "Ch\u01b0a x\u00e1c \u0111\u1ecbnh";
-    private static final String ACTIVE_AWARD_STATUS = "\u0110ANG \u00c1P D\u1ee4NG";
-    private static final String PAID_STATUS = "\u0110\u00c3 THANH TO\u00c1N";
+    private static final String UNKNOWN_TEAM = "Chưa xác định";
+    private static final String PAID_STATUS = "ĐÃ THANH TOÁN";
 
+    private final SeasonRepository seasonRepository;
     private final AwardService awardService;
-    private final AwardRepository awardRepository;
-    private final AwardResultRepository awardResultRepository;
-    private final AwardPaymentRepository paymentRepository;
+    private final AwardResultService awardResultService;
     private final MatchRepository matchRepository;
+    private final AwardPaymentRepository paymentRepository;
+    private final MatchDisplayNameUtil matchDisplayNameUtil;
 
     public List<Season> getAllSeasons() {
-        return awardService.getSeasonOptions();
+        return seasonRepository.findAll();
     }
 
     public Season findSeasonById(Long seasonId) {
-        return awardService.findSeasonById(seasonId);
+        return seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mùa giải!"));
     }
 
     public List<Award> getAwardsBySeason(Long seasonId) {
@@ -50,21 +52,24 @@ public class AwardPaymentService {
 
     public Match findMatchById(Long matchId) {
         return matchRepository.findById(matchId)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y tr\u1eadn \u0111\u1ea5u!"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy trận đấu!"));
     }
 
     public Map<Long, String> getMatchDisplayNames(List<Match> matches) {
-        return awardService.getDisplayNamesForMatches(matches);
+        List<Long> matchIds = matches.stream()
+                .map(Match::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        return matchDisplayNameUtil.buildDisplayNames(matchIds);
     }
 
     public String getMatchDisplayName(Long matchId) {
-        Match match = findMatchById(matchId);
-        return awardService.getDisplayNamesForMatches(List.of(match))
+        return matchDisplayNameUtil.buildDisplayNames(List.of(matchId))
                 .getOrDefault(matchId, UNKNOWN_TEAM);
     }
 
     public List<Award> getAwardsByMatch(Long matchId) {
-        return awardRepository.findByMatchIdAndStatus(matchId, ACTIVE_AWARD_STATUS);
+        return awardService.getAwardsByMatch(matchId);
     }
 
     public Award findAwardById(Long awardId) {
@@ -72,12 +77,11 @@ public class AwardPaymentService {
     }
 
     public List<AwardResult> getResultsByAward(Long awardId) {
-        return awardResultRepository.findByAwardId(awardId);
+        return awardResultService.getResultsByAward(awardId);
     }
 
     public AwardResult findResultById(Long id) {
-        return awardResultRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y k\u1ebft qu\u1ea3 gi\u1ea3i th\u01b0\u1edfng!"));
+        return awardResultService.findResultById(id);
     }
 
     @Transactional
@@ -88,7 +92,7 @@ public class AwardPaymentService {
 
         if (PAID_STATUS.equals(result.getPaymentStatus())
                 || paymentRepository.existsByAwardResultId(awardResultId)) {
-            throw new IllegalStateException("Gi\u1ea3i th\u01b0\u1edfng n\u00e0y \u0111\u00e3 \u0111\u01b0\u1ee3c thanh to\u00e1n tr\u01b0\u1edbc \u0111\u00f3!");
+            throw new IllegalStateException("Giải thưởng này đã được thanh toán trước đó!");
         }
 
         AwardPayment payment = new AwardPayment();
@@ -100,7 +104,7 @@ public class AwardPaymentService {
         paymentRepository.save(payment);
 
         result.setPaymentStatus(PAID_STATUS);
-        awardResultRepository.save(result);
+        awardResultService.saveExisting(result);
 
         return payment;
     }

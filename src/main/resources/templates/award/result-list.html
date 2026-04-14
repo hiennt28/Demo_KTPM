@@ -39,8 +39,7 @@
             <td th:text="${i.count}"></td>
             <td>
                 <span th:if="${r.team}" th:text="${r.team.teamName}"></span>
-                <span th:if="${r.playerContract}"
-                      th:text="${r.playerContract.player.fullName + ' - ' + r.playerContract.team.teamName}"></span>
+                <span th:if="${r.player}" th:text="${r.player.fullName}"></span>
             </td>
             <td th:text="${r.representative}"></td>
             <td th:text="${r.bankAccount}"></td>

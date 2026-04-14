@@ -1,4 +1,3 @@
-// controller/AwardPaymentController.java
 package com.vdqg.controller;
 
 import com.vdqg.entity.AwardPayment;
@@ -63,23 +62,18 @@ public class AwardPaymentController {
 
     @GetMapping("/match/{matchId}/modal")
     public String loadMatchAwardsModal(@PathVariable Long matchId, Model model) {
+        model.addAttribute("fragmentOnly", true);
         model.addAttribute("matchName", paymentService.getMatchDisplayName(matchId));
         model.addAttribute("awards", paymentService.getAwardsByMatch(matchId));
-        return "payment/match-awards-modal";
-    }
-
-    @GetMapping("/award/{awardId}")
-    public String listResults(@PathVariable Long awardId, Model model) {
-        model.addAttribute("award", paymentService.findAwardById(awardId));
-        model.addAttribute("results", paymentService.getResultsByAward(awardId));
-        return "payment/results";
+        return "payment/list :: matchAwardsContent";
     }
 
     @GetMapping("/award/{awardId}/modal")
     public String loadResultsModal(@PathVariable Long awardId, Model model) {
+        model.addAttribute("fragmentOnly", true);
         model.addAttribute("award", paymentService.findAwardById(awardId));
         model.addAttribute("results", paymentService.getResultsByAward(awardId));
-        return "payment/results-modal";
+        return "payment/list :: resultsContent";
     }
 
     @GetMapping("/result/{resultId}/pay")

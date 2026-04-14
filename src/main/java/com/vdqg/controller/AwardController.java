@@ -1,6 +1,6 @@
-// controller/AwardController.java
 package com.vdqg.controller;
 
+import com.vdqg.dto.AwardFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.Match;
 import com.vdqg.service.AwardService;
@@ -76,9 +76,9 @@ public class AwardController {
     }
 
     private void populateMatchOptions(Model model) {
-        model.addAttribute("seasonOptions", awardService.getSeasonOptions());
-        List<Match> matches = awardService.getAllMatches();
-        model.addAttribute("matches", matches);
-        model.addAttribute("matchDisplayNames", awardService.getDisplayNamesForMatches(matches));
+        AwardFormOptions options = awardService.getFormOptions();
+        model.addAttribute("seasonOptions", options.seasonOptions());
+        model.addAttribute("matches", options.matches());
+        model.addAttribute("matchDisplayNames", options.matchDisplayNames());
     }
 }

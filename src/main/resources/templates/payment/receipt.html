@@ -22,8 +22,7 @@
                 <span th:text="${result.award.season != null ? result.award.season.seasonName : ''}"></span></p>
             <p><strong>Người/Đội nhận:</strong>
                 <span th:if="${result.team}" th:text="${result.team.teamName}"></span>
-                <span th:if="${result.playerContract}"
-                      th:text="${result.playerContract.player.fullName}"></span>
+                <span th:if="${result.player}" th:text="${result.player.fullName}"></span>
             </p>
             <p><strong>Người đại diện:</strong>
                 <span th:text="${result.representative}"></span></p>

@@ -8,17 +8,17 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AwardResultRepository extends JpaRepository<AwardResult, Long> {
-    @EntityGraph(attributePaths = {"award", "team", "playerContract", "playerContract.player"})
+    @EntityGraph(attributePaths = {"award", "team", "player"})
     List<AwardResult> findByAwardId(Long awardId);
 
-    @EntityGraph(attributePaths = {"award", "team", "playerContract", "playerContract.player"})
+    @EntityGraph(attributePaths = {"award", "team", "player"})
     Optional<AwardResult> findDetailedById(Long id);
 
     boolean existsByAwardIdAndTeamId(Long awardId, Long teamId);
 
     boolean existsByAwardIdAndTeamIdAndIdNot(Long awardId, Long teamId, Long id);
 
-    boolean existsByAwardIdAndPlayerContractId(Long awardId, Long playerContractId);
+    boolean existsByAwardIdAndPlayerId(Long awardId, Long playerId);
 
-    boolean existsByAwardIdAndPlayerContractIdAndIdNot(Long awardId, Long playerContractId, Long id);
+    boolean existsByAwardIdAndPlayerIdAndIdNot(Long awardId, Long playerId, Long id);
 }

@@ -101,7 +101,7 @@ INSERT INTO awards (
   );
 
 INSERT INTO award_results (
-  id, award_id, team_id, player_contract_id,
+  id, award_id, team_id, player_id,
   bank_account, bank_name, representative, payment_status
 ) VALUES
   (
@@ -109,7 +109,7 @@ INSERT INTO award_results (
     '1900368686888', 'Techcombank', 'Nguyễn Minh Quân', 'CHƯA THANH TOÁN'
   ),
   (
-    9002, 8002, NULL, 6008,
+    9002, 8002, NULL, 4008,
     '0123456789', 'Vietcombank', 'Jose Silva', 'ĐÃ THANH TOÁN'
   );
 

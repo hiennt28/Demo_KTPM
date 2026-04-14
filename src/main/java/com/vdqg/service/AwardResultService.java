@@ -1,11 +1,12 @@
 package com.vdqg.service;
 
+import com.vdqg.dto.AwardResultFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.AwardResult;
 import com.vdqg.entity.MatchDetail;
+import com.vdqg.entity.Player;
 import com.vdqg.entity.PlayerContract;
 import com.vdqg.entity.Team;
-import com.vdqg.repository.AwardRepository;
 import com.vdqg.repository.AwardResultRepository;
 import com.vdqg.repository.MatchDetailRepository;
 import com.vdqg.repository.PlayerContractRepository;
@@ -22,25 +23,24 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class AwardResultService {
 
-    private static final String TEAM_AWARD = "T\u1eacP TH\u1ec2";
-    private static final String INDIVIDUAL_AWARD = "C\u00c1 NH\u00c2N";
-    private static final String ACTIVE_CONTRACT = "HO\u1ea0T \u0110\u1ed8NG";
-    private static final String UNPAID_STATUS = "CH\u01afA THANH TO\u00c1N";
+    private static final String TEAM_AWARD = "TẬP THỂ";
+    private static final String INDIVIDUAL_AWARD = "CÁ NHÂN";
+    private static final String ACTIVE_CONTRACT = "HOẠT ĐỘNG";
+    private static final String UNPAID_STATUS = "CHƯA THANH TOÁN";
 
-    private final AwardRepository awardRepository;
+    private final AwardService awardService;
     private final AwardResultRepository awardResultRepository;
     private final TeamRepository teamRepository;
     private final PlayerContractRepository playerContractRepository;
     private final MatchDetailRepository matchDetailRepository;
 
     public Award findAwardById(Long awardId) {
-        return awardRepository.findById(awardId)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y gi\u1ea3i th\u01b0\u1edfng!"));
+        return awardService.findById(awardId);
     }
 
     public AwardResult findResultById(Long resultId) {
         return awardResultRepository.findDetailedById(resultId)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y ng\u01b0\u1eddi nh\u1eadn gi\u1ea3i!"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người nhận giải!"));
     }
 
     public List<AwardResult> getResultsByAward(Long awardId) {
@@ -61,27 +61,12 @@ public class AwardResultService {
                 .toList();
     }
 
-    public List<PlayerContract> getPlayerOptions(Award award) {
-        if (award.getMatch() != null) {
-            List<Long> teamIds = matchDetailRepository.findByMatchId(award.getMatch().getId()).stream()
-                    .map(MatchDetail::getTeam)
-                    .filter(Objects::nonNull)
-                    .map(Team::getId)
-                    .toList();
-            Long seasonId = award.getMatch().getRound().getSeason().getId();
-
-            return playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, ACTIVE_CONTRACT)
-                    .stream()
-                    .sorted(Comparator.comparing(pc -> pc.getPlayer().getFullName(), String.CASE_INSENSITIVE_ORDER))
-                    .toList();
-        }
-
-        if (award.getSeason() == null) {
-            return List.of();
-        }
-
-        return playerContractRepository.findBySeasonIdAndStatus(award.getSeason().getId(), ACTIVE_CONTRACT).stream()
-                .sorted(Comparator.comparing(pc -> pc.getPlayer().getFullName(), String.CASE_INSENSITIVE_ORDER))
+    public List<Player> getPlayerOptions(Award award) {
+        return getEligibleContracts(award).stream()
+                .map(PlayerContract::getPlayer)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted(Comparator.comparing(Player::getFullName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
@@ -103,17 +88,22 @@ public class AwardResultService {
             Team team = resolveTeam(input);
             validateTeamAward(award, target.getId(), team);
             target.setTeam(team);
-            target.setPlayerContract(null);
+            target.setPlayer(null);
         } else if (INDIVIDUAL_AWARD.equals(award.getAwardType())) {
-            PlayerContract playerContract = resolvePlayerContract(input);
+            PlayerContract playerContract = resolveEligiblePlayerContract(award, input);
             validateIndividualAward(award, target.getId(), playerContract);
-            target.setPlayerContract(playerContract);
+            target.setPlayer(playerContract.getPlayer());
             target.setTeam(null);
         } else {
-            throw new IllegalArgumentException("Lo\u1ea1i gi\u1ea3i th\u01b0\u1edfng kh\u00f4ng h\u1ee3p l\u1ec7!");
+            throw new IllegalArgumentException("Loại giải thưởng không hợp lệ!");
         }
 
         awardResultRepository.save(target);
+    }
+
+    @Transactional
+    public void saveExisting(AwardResult awardResult) {
+        awardResultRepository.save(awardResult);
     }
 
     @Transactional
@@ -123,22 +113,43 @@ public class AwardResultService {
 
     private Team resolveTeam(AwardResult input) {
         if (input.getTeam() == null || input.getTeam().getId() == null) {
-            throw new IllegalArgumentException("B\u1ea1n ch\u01b0a ch\u1ecdn \u0111\u1ed9i nh\u1eadn gi\u1ea3i!");
+            throw new IllegalArgumentException("Bạn chưa chọn đội nhận giải!");
         }
 
-        Long teamId = input.getTeam().getId();
-        return teamRepository.findById(teamId)
-                .orElseThrow(() -> new IllegalArgumentException("\u0110\u1ed9i b\u00f3ng kh\u00f4ng t\u1ed3n t\u1ea1i!"));
+        return teamRepository.findById(input.getTeam().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Đội bóng không tồn tại!"));
     }
 
-    private PlayerContract resolvePlayerContract(AwardResult input) {
-        if (input.getPlayerContract() == null || input.getPlayerContract().getId() == null) {
-            throw new IllegalArgumentException("B\u1ea1n ch\u01b0a ch\u1ecdn c\u1ea7u th\u1ee7 nh\u1eadn gi\u1ea3i!");
+    private PlayerContract resolveEligiblePlayerContract(Award award, AwardResult input) {
+        if (input.getPlayer() == null || input.getPlayer().getId() == null) {
+            throw new IllegalArgumentException("Bạn chưa chọn cầu thủ nhận giải!");
         }
 
-        Long contractId = input.getPlayerContract().getId();
-        return playerContractRepository.findById(contractId)
-                .orElseThrow(() -> new IllegalArgumentException("H\u1ee3p \u0111\u1ed3ng c\u1ea7u th\u1ee7 kh\u00f4ng t\u1ed3n t\u1ea1i!"));
+        Long playerId = input.getPlayer().getId();
+        return getEligibleContracts(award).stream()
+                .filter(contract -> contract.getPlayer() != null)
+                .filter(contract -> Objects.equals(contract.getPlayer().getId(), playerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Cầu thủ được chọn không hợp lệ với hạng mục này!"));
+    }
+
+    private List<PlayerContract> getEligibleContracts(Award award) {
+        if (award.getMatch() != null) {
+            List<Long> teamIds = matchDetailRepository.findByMatchId(award.getMatch().getId()).stream()
+                    .map(MatchDetail::getTeam)
+                    .filter(Objects::nonNull)
+                    .map(Team::getId)
+                    .toList();
+            Long seasonId = award.getMatch().getRound().getSeason().getId();
+
+            return playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, ACTIVE_CONTRACT);
+        }
+
+        if (award.getSeason() == null) {
+            return List.of();
+        }
+
+        return playerContractRepository.findBySeasonIdAndStatus(award.getSeason().getId(), ACTIVE_CONTRACT);
     }
 
     private void validateTeamAward(Award award, Long resultId, Team team) {
@@ -150,7 +161,7 @@ public class AwardResultService {
                     .anyMatch(teamId -> Objects.equals(teamId, team.getId()));
 
             if (!presentInMatch) {
-                throw new IllegalArgumentException("\u0110\u1ed9i nh\u1eadn gi\u1ea3i kh\u00f4ng thu\u1ed9c tr\u1eadn \u0111\u1ea5u \u0111\u01b0\u1ee3c ch\u1ecdn!");
+                throw new IllegalArgumentException("Đội nhận giải không thuộc trận đấu được chọn!");
             }
         }
 
@@ -158,18 +169,18 @@ public class AwardResultService {
                 ? awardResultRepository.existsByAwardIdAndTeamId(award.getId(), team.getId())
                 : awardResultRepository.existsByAwardIdAndTeamIdAndIdNot(award.getId(), team.getId(), resultId);
         if (exists) {
-            throw new IllegalArgumentException("\u0110\u1ed9i n\u00e0y \u0111\u00e3 \u0111\u01b0\u1ee3c g\u00e1n cho h\u1ea1ng m\u1ee5c gi\u1ea3i th\u01b0\u1edfng n\u00e0y!");
+            throw new IllegalArgumentException("Đội này đã được gán cho hạng mục giải thưởng này!");
         }
     }
 
     private void validateIndividualAward(Award award, Long resultId, PlayerContract playerContract) {
         if (!ACTIVE_CONTRACT.equals(playerContract.getStatus())) {
-            throw new IllegalArgumentException("C\u1ea7u th\u1ee7 \u0111\u01b0\u1ee3c ch\u1ecdn kh\u00f4ng c\u00f2n h\u1ee3p \u0111\u1ed3ng ho\u1ea1t \u0111\u1ed9ng!");
+            throw new IllegalArgumentException("Cầu thủ được chọn không còn hợp đồng hoạt động!");
         }
 
         if (award.getSeason() != null
                 && !Objects.equals(playerContract.getSeason().getId(), award.getSeason().getId())) {
-            throw new IllegalArgumentException("C\u1ea7u th\u1ee7 kh\u00f4ng thu\u1ed9c m\u00f9a gi\u1ea3i c\u1ee7a h\u1ea1ng m\u1ee5c n\u00e0y!");
+            throw new IllegalArgumentException("Cầu thủ không thuộc mùa giải của hạng mục này!");
         }
 
         if (award.getMatch() != null) {
@@ -182,15 +193,23 @@ public class AwardResultService {
             Long matchSeasonId = award.getMatch().getRound().getSeason().getId();
 
             if (!inMatch || !Objects.equals(playerContract.getSeason().getId(), matchSeasonId)) {
-                throw new IllegalArgumentException("C\u1ea7u th\u1ee7 kh\u00f4ng thu\u1ed9c tr\u1eadn \u0111\u1ea5u ho\u1eb7c m\u00f9a gi\u1ea3i c\u1ee7a h\u1ea1ng m\u1ee5c n\u00e0y!");
+                throw new IllegalArgumentException("Cầu thủ không thuộc trận đấu hoặc mùa giải của hạng mục này!");
             }
         }
 
+        Long playerId = playerContract.getPlayer().getId();
         boolean exists = resultId == null
-                ? awardResultRepository.existsByAwardIdAndPlayerContractId(award.getId(), playerContract.getId())
-                : awardResultRepository.existsByAwardIdAndPlayerContractIdAndIdNot(award.getId(), playerContract.getId(), resultId);
+                ? awardResultRepository.existsByAwardIdAndPlayerId(award.getId(), playerId)
+                : awardResultRepository.existsByAwardIdAndPlayerIdAndIdNot(award.getId(), playerId, resultId);
         if (exists) {
-            throw new IllegalArgumentException("C\u1ea7u th\u1ee7 n\u00e0y \u0111\u00e3 \u0111\u01b0\u1ee3c g\u00e1n cho h\u1ea1ng m\u1ee5c gi\u1ea3i th\u01b0\u1edfng n\u00e0y!");
+            throw new IllegalArgumentException("Cầu thủ này đã được gán cho hạng mục giải thưởng này!");
         }
+    }
+
+    public AwardResultFormOptions getFormOptions(Award award) {
+        return new AwardResultFormOptions(
+                getTeamOptions(award),
+                getPlayerOptions(award)
+        );
     }
 }

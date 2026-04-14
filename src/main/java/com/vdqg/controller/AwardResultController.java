@@ -1,5 +1,6 @@
 package com.vdqg.controller;
 
+import com.vdqg.dto.AwardResultFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.AwardResult;
 import com.vdqg.service.AwardResultService;
@@ -80,7 +81,8 @@ public class AwardResultController {
     }
 
     private void populateOptions(Model model, Award award) {
-        model.addAttribute("teamOptions", awardResultService.getTeamOptions(award));
-        model.addAttribute("playerOptions", awardResultService.getPlayerOptions(award));
+        AwardResultFormOptions options = awardResultService.getFormOptions(award);
+        model.addAttribute("teamOptions", options.teamOptions());
+        model.addAttribute("playerOptions", options.playerOptions());
     }
 }

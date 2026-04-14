@@ -1,39 +1,33 @@
 package com.vdqg.service;
 
+import com.vdqg.dto.AwardFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.Match;
-import com.vdqg.entity.MatchDetail;
 import com.vdqg.entity.Season;
 import com.vdqg.repository.AwardRepository;
-import com.vdqg.repository.MatchDetailRepository;
 import com.vdqg.repository.MatchRepository;
 import com.vdqg.repository.SeasonRepository;
+import com.vdqg.util.MatchDisplayNameUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AwardService {
 
-    private static final String UNKNOWN_TEAM = "Ch\u01b0a x\u00e1c \u0111\u1ecbnh";
-    private static final String ACTIVE_AWARD_STATUS = "\u0110ANG \u00c1P D\u1ee4NG";
-    private static final String CANCELED_AWARD_STATUS = "H\u1ee6Y \u00c1P D\u1ee4NG";
-    private static final String SEASON_SCOPE = "M\u00d9A GI\u1ea2I";
-    private static final String HOME_ROLE = "NH\u00c0";
-    private static final String AWAY_ROLE = "KH\u00c1CH";
+    private static final String ACTIVE_AWARD_STATUS = "ĐANG ÁP DỤNG";
+    private static final String CANCELED_AWARD_STATUS = "HỦY ÁP DỤNG";
+    private static final String SEASON_SCOPE = "MÙA GIẢI";
 
     private final AwardRepository awardRepository;
     private final MatchRepository matchRepository;
-    private final MatchDetailRepository matchDetailRepository;
     private final SeasonRepository seasonRepository;
+    private final MatchDisplayNameUtil matchDisplayNameUtil;
 
     public List<Award> getAllActiveAwards() {
         return awardRepository.findByStatus(ACTIVE_AWARD_STATUS);
@@ -41,6 +35,10 @@ public class AwardService {
 
     public List<Award> getAwardsBySeason(String seasonName) {
         return awardRepository.findBySeasonSeasonNameAndStatus(seasonName, ACTIVE_AWARD_STATUS);
+    }
+
+    public List<Award> getAwardsByMatch(Long matchId) {
+        return awardRepository.findByMatchIdAndStatus(matchId, ACTIVE_AWARD_STATUS);
     }
 
     public List<Season> getSeasonOptions() {
@@ -52,12 +50,12 @@ public class AwardService {
 
     public Season findSeasonById(Long id) {
         return seasonRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y m\u00f9a gi\u1ea3i ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mùa giải ID: " + id));
     }
 
     public Award findById(Long id) {
         return awardRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Kh\u00f4ng t\u00ecm th\u1ea5y gi\u1ea3i th\u01b0\u1edfng ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giải thưởng ID: " + id));
     }
 
     public List<Match> getAllMatches() {
@@ -71,7 +69,7 @@ public class AwardService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        return buildMatchDisplayNames(matchIds);
+        return matchDisplayNameUtil.buildDisplayNames(matchIds);
     }
 
     @Transactional(readOnly = true)
@@ -84,7 +82,7 @@ public class AwardService {
                 .distinct()
                 .toList();
 
-        return buildMatchDisplayNames(matchIds);
+        return matchDisplayNameUtil.buildDisplayNames(matchIds);
     }
 
     @Transactional
@@ -92,7 +90,7 @@ public class AwardService {
         if (award.getSeason() != null && award.getSeason().getId() != null) {
             Long seasonId = award.getSeason().getId();
             award.setSeason(seasonRepository.findById(seasonId)
-                    .orElseThrow(() -> new IllegalArgumentException("M\u00f9a gi\u1ea3i kh\u00f4ng t\u1ed3n t\u1ea1i!")));
+                    .orElseThrow(() -> new IllegalArgumentException("Mùa giải không tồn tại!")));
         } else {
             award.setSeason(null);
         }
@@ -100,19 +98,19 @@ public class AwardService {
         if (award.getMatch() != null && award.getMatch().getId() != null) {
             Long matchId = award.getMatch().getId();
             award.setMatch(matchRepository.findById(matchId)
-                    .orElseThrow(() -> new IllegalArgumentException("Tr\u1eadn \u0111\u1ea5u kh\u00f4ng t\u1ed3n t\u1ea1i!")));
+                    .orElseThrow(() -> new IllegalArgumentException("Trận đấu không tồn tại!")));
         } else {
             award.setMatch(null);
         }
 
         if (award.getId() == null
                 && awardRepository.existsByAwardNameAndStatus(award.getAwardName(), ACTIVE_AWARD_STATUS)) {
-            throw new IllegalArgumentException("T\u00ean gi\u1ea3i th\u01b0\u1edfng \u0111\u00e3 t\u1ed3n t\u1ea1i!");
+            throw new IllegalArgumentException("Tên giải thưởng đã tồn tại!");
         }
         if (award.getId() != null
                 && awardRepository.existsByAwardNameAndStatusAndIdNot(
                 award.getAwardName(), ACTIVE_AWARD_STATUS, award.getId())) {
-            throw new IllegalArgumentException("T\u00ean gi\u1ea3i th\u01b0\u1edfng \u0111\u00e3 t\u1ed3n t\u1ea1i!");
+            throw new IllegalArgumentException("Tên giải thưởng đã tồn tại!");
         }
 
         if (SEASON_SCOPE.equals(award.getScope())) {
@@ -131,53 +129,10 @@ public class AwardService {
         awardRepository.save(award);
     }
 
-    private Map<Long, String> buildMatchDisplayNames(List<Long> matchIds) {
-        Map<Long, String> displayNames = new LinkedHashMap<>();
-        if (matchIds.isEmpty()) {
-            return displayNames;
-        }
-
-        Map<Long, List<MatchDetail>> detailsByMatchId = matchDetailRepository.findByMatchIdIn(matchIds).stream()
-                .collect(Collectors.groupingBy(
-                        detail -> detail.getMatch().getId(),
-                        LinkedHashMap::new,
-                        Collectors.toCollection(ArrayList::new)
-                ));
-
-        for (Long matchId : matchIds) {
-            displayNames.put(matchId, buildMatchDisplayName(detailsByMatchId.get(matchId)));
-        }
-
-        return displayNames;
-    }
-
-    private String buildMatchDisplayName(List<MatchDetail> matchDetails) {
-        String homeTeam = getTeamNameByRole(matchDetails, HOME_ROLE, 0);
-        String awayTeam = getTeamNameByRole(matchDetails, AWAY_ROLE, 1);
-        return homeTeam + " vs " + awayTeam;
-    }
-
-    private String getTeamNameByRole(List<MatchDetail> matchDetails, String role, int fallbackIndex) {
-        if (matchDetails == null || matchDetails.isEmpty()) {
-            return UNKNOWN_TEAM;
-        }
-
-        for (MatchDetail detail : matchDetails) {
-            if (detail != null
-                    && Objects.equals(role, detail.getRole())
-                    && detail.getTeam() != null
-                    && detail.getTeam().getTeamName() != null) {
-                return detail.getTeam().getTeamName();
-            }
-        }
-
-        if (fallbackIndex >= 0 && fallbackIndex < matchDetails.size()) {
-            MatchDetail detail = matchDetails.get(fallbackIndex);
-            if (detail != null && detail.getTeam() != null && detail.getTeam().getTeamName() != null) {
-                return detail.getTeam().getTeamName();
-            }
-        }
-
-        return UNKNOWN_TEAM;
+    public AwardFormOptions getFormOptions() {
+        List<Season> seasons = getSeasonOptions();
+        List<Match> matches = getAllMatches();
+        Map<Long, String> displayNames = getDisplayNamesForMatches(matches);
+        return new AwardFormOptions(seasons, matches, displayNames);
     }
 }

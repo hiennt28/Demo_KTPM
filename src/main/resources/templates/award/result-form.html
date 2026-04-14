@@ -30,12 +30,12 @@
 
         <div class="mb-3" th:if="${award.awardType == 'CÁ NHÂN'}">
             <label class="form-label fw-bold">Cầu thủ nhận giải *</label>
-            <select class="form-select" name="playerContract.id">
+            <select class="form-select" name="player.id">
                 <option value="">-- Chọn cầu thủ --</option>
-                <option th:each="pc : ${playerOptions}"
-                        th:value="${pc.id}"
-                        th:text="${pc.player.fullName + ' - ' + pc.team.teamName + ' (#' + pc.jerseyNumber + ')'}"
-                        th:selected="${awardResult.playerContract != null and awardResult.playerContract.id == pc.id}">
+                <option th:each="player : ${playerOptions}"
+                        th:value="${player.id}"
+                        th:text="${player.fullName}"
+                        th:selected="${awardResult.player != null and awardResult.player.id == player.id}">
                 </option>
             </select>
         </div>

@@ -7,7 +7,7 @@
 </head>
 <body class="bg-light">
 <div class="container mt-4" style="max-width:650px">
-    <h3>💳 Xác Nhận Thanh Toán</h3>
+    <h3>Xác Nhận Thanh Toán</h3>
     <hr>
 
     <div class="card mb-3">
@@ -17,8 +17,7 @@
                 <span th:text="${result.award.awardName}"></span></p>
             <p><strong>Người/Đội nhận:</strong>
                 <span th:if="${result.team}" th:text="${result.team.teamName}"></span>
-                <span th:if="${result.playerContract}"
-                      th:text="${result.playerContract.player.fullName}"></span>
+                <span th:if="${result.player}" th:text="${result.player.fullName}"></span>
             </p>
             <p><strong>Người đại diện:</strong>
                 <span th:text="${result.representative}"></span></p>
@@ -40,12 +39,12 @@
             <div class="form-check">
                 <input class="form-check-input" type="radio"
                        name="paymentMethod" value="CHUYỂN KHOẢN" id="bank" required>
-                <label class="form-check-label" for="bank">🏦 Chuyển khoản ngân hàng</label>
+                <label class="form-check-label" for="bank">Chuyển khoản ngân hàng</label>
             </div>
             <div class="form-check">
                 <input class="form-check-input" type="radio"
                        name="paymentMethod" value="TIỀN MẶT" id="cash">
-                <label class="form-check-label" for="cash">💵 Tiền mặt</label>
+                <label class="form-check-label" for="cash">Tiền mặt</label>
             </div>
         </div>
 
@@ -57,7 +56,7 @@
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-success"
                     onclick="return confirm('Xác nhận thực hiện thanh toán?')">
-                ✅ Thực hiện thanh toán
+                Thực hiện thanh toán
             </button>
             <a href="/payment" class="btn btn-secondary">Quay lại</a>
         </div>

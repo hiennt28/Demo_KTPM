@@ -1,12 +1,23 @@
-// entity/AwardResult.java
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "award_results")
-@Data @NoArgsConstructor @AllArgsConstructor
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AwardResult {
 
     @Id
@@ -17,17 +28,14 @@ public class AwardResult {
     @JoinColumn(name = "award_id", nullable = false)
     private Award award;
 
-    // Nếu TẬP THỂ → liên kết Team
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id")
     private Team team;
 
-    // Nếu CÁ NHÂN → liên kết PlayerContract
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "player_contract_id")
-    private PlayerContract playerContract;
+    @JoinColumn(name = "player_id")
+    private Player player;
 
-    // Thông tin thanh toán
     @Column(name = "bank_account")
     private String bankAccount;
 
@@ -35,9 +43,8 @@ public class AwardResult {
     private String bankName;
 
     @Column(name = "representative")
-    private String representative;      // Người đại diện nhận thưởng
+    private String representative;
 
-    // CHƯA THANH TOÁN | ĐÃ THANH TOÁN
     @Column(name = "payment_status")
     private String paymentStatus = "CHƯA THANH TOÁN";
 }

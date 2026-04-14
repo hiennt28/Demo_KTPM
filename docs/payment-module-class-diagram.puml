@@ -1,0 +1,278 @@
+@startuml
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam class {
+  BackgroundColor<<boundary>> #FCE4EC
+  BorderColor<<boundary>> #9C27B0
+  BackgroundColor<<control>> #E1F5FE
+  BorderColor<<control>> #0277BD
+  BackgroundColor<<service>> #E3F2FD
+  BorderColor<<service>> #1565C0
+  BackgroundColor<<repository>> #E3F2FD
+  BorderColor<<repository>> #1565C0
+  BackgroundColor<<entity>> #E8F5E9
+  BorderColor<<entity>> #2E7D32
+  BackgroundColor<<utility>> #FFF8E1
+  BorderColor<<utility>> #F9A825
+}
+
+package "Boundary" {
+  class "list.html" <<boundary>> {
+    -getFromSession: seasons, selectedSeason
+    -getFromSession: seasonAwards, matches, matchDisplayNames
+    -showToResult: seasonAwardList
+    - STT: int
+    - awardName: text
+    - awardType: text
+    - scope: text
+    - seasonName/matchName: text
+    - prizeAmount: text
+    - status: text
+    - btnViewRecipients: button
+    -showToResult: matchList
+    - STT: int
+    - matchName: text
+    - matchDate: datetime
+    - stadium: text
+    - btnViewMatchAwards: button
+    -showPopup: recipientList
+    - recipientName/teamName: text
+    - representative: text
+    - bankAccount: text
+    - bankName: text
+    - paymentStatus: text
+    - btnPay: button
+  }
+
+  class "payment.html" <<boundary>> {
+    -getFromSession: AwardResult
+    -showForm: paymentInfo
+    - awardName: text
+    - recipientName/teamName: text
+    - representative: text
+    - bankAccount: text
+    - bankName: text
+    - prizeAmount: text
+    - paymentMethod: radio button
+    - note: textarea
+    - btnSubmit: button
+    - btnBack: button
+  }
+
+  class "receipt.html" <<boundary>> {
+    -getFromSession: AwardPayment, AwardResult
+    -showToResult: receiptInfo
+    - paymentId: text
+    - awardName: text
+    - seasonName: text
+    - recipientName/teamName: text
+    - representative: text
+    - bankAccount: text
+    - bankName: text
+    - paymentMethod: text
+    - amount: text
+    - paidAt: datetime
+    - note: text
+    - btnBackToList: button
+    - btnPrintReceipt: button
+  }
+}
+
+package "Control" {
+  class AwardPaymentController <<control>> {
+    -paymentService: AwardPaymentService
+    +selectSeason(model): String
+    +listSeasonData(seasonId, model): String
+    +listMatchAwards(seasonId, matchId, model): String
+    +loadMatchAwardsModal(matchId, model): String
+    +loadResultsModal(awardId, model): String
+    +showPayForm(resultId, model): String
+    +processPayment(resultId, paymentMethod, note, model, ra): String
+  }
+}
+
+package "Service" {
+  class AwardPaymentService <<service>> {
+    -seasonRepository: SeasonRepository
+    -awardRepository: AwardRepository
+    -awardResultRepository: AwardResultRepository
+    -paymentRepository: AwardPaymentRepository
+    -matchRepository: MatchRepository
+    -matchDetailRepository: MatchDetailRepository
+    -matchDisplayNameUtil: MatchDisplayNameUtil
+    +getAllSeasons(): List<Season>
+    +findSeasonById(seasonId): Season
+    +getAwardsBySeason(seasonId): List<Award>
+    +getMatchesBySeason(seasonId): List<Match>
+    +findMatchById(matchId): Match
+    +getMatchDisplayNames(matches): Map<Long, String>
+    +getMatchDisplayName(matchId): String
+    +getAwardsByMatch(matchId): List<Award>
+    +findAwardById(awardId): Award
+    +getResultsByAward(awardId): List<AwardResult>
+    +findResultById(id): AwardResult
+    +processPayment(awardResultId, paymentMethod, note): AwardPayment
+  }
+
+  class MatchDisplayNameUtil <<utility>> {
+    -matchDetailRepository: MatchDetailRepository
+    +buildDisplayNames(matchIds): Map<Long, String>
+  }
+}
+
+package "Repository" {
+  interface SeasonRepository <<repository>> {
+    +findAll(): List<Season>
+    +findById(id): Optional<Season>
+    +findByStatus(status): List<Season>
+  }
+
+  interface AwardRepository <<repository>> {
+    +findById(id): Optional<Award>
+    +findBySeasonSeasonNameAndStatus(seasonName, status): List<Award>
+    +findByMatchIdAndStatus(matchId, status): List<Award>
+  }
+
+  interface AwardResultRepository <<repository>> {
+    +findById(id): Optional<AwardResult>
+    +findByAwardId(awardId): List<AwardResult>
+    +findDetailedById(id): Optional<AwardResult>
+    +existsByAwardIdAndTeamId(awardId, teamId): boolean
+    +existsByAwardIdAndPlayerId(awardId, playerId): boolean
+  }
+
+  interface AwardPaymentRepository <<repository>> {
+    +save(payment): AwardPayment
+    +existsByAwardResultId(awardResultId): boolean
+  }
+
+  interface MatchRepository <<repository>> {
+    +findById(id): Optional<Match>
+    +findByRoundSeasonIdOrderByMatchDateAsc(seasonId): List<Match>
+  }
+
+  interface MatchDetailRepository <<repository>> {
+    +findByMatchId(matchId): List<MatchDetail>
+    +findByMatchIdIn(matchIds): List<MatchDetail>
+    +findDetailedById(id): Optional<MatchDetail>
+  }
+}
+
+package "Entity" {
+  class Season <<entity>> {
+    +id: Long
+    +seasonName: String
+    +status: String
+  }
+
+  class Round <<entity>> {
+    +id: Long
+    +roundName: String
+    +roundOrder: Integer
+  }
+
+  class Match <<entity>> {
+    +id: Long
+    +matchDate: LocalDateTime
+    +stadium: String
+    +status: String
+  }
+
+  class MatchDetail <<entity>> {
+    +id: Long
+    +role: String
+    +score: Integer
+    +result: String
+  }
+
+  class Award <<entity>> {
+    +id: Long
+    +awardName: String
+    +awardType: String
+    +scope: String
+    +prizeAmount: BigDecimal
+    +conditions: String
+    +status: String
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+  }
+
+  class AwardResult <<entity>> {
+    +id: Long
+    +bankAccount: String
+    +bankName: String
+    +representative: String
+    +paymentStatus: String
+  }
+
+  class AwardPayment <<entity>> {
+    +id: Long
+    +paymentMethod: String
+    +amount: BigDecimal
+    +paidAt: LocalDateTime
+    +note: String
+  }
+
+  class Team <<entity>> {
+    +id: Long
+    +teamName: String
+    +stadium: String
+    +coach: String
+    +logoUrl: String
+  }
+
+  class Player <<entity>> {
+    +id: Long
+    +fullName: String
+    +dateOfBirth: String
+    +nationality: String
+    +position: String
+  }
+}
+
+"list.html" --> AwardPaymentController
+"payment.html" --> AwardPaymentController
+"receipt.html" --> AwardPaymentController
+
+AwardPaymentController --> AwardPaymentService
+AwardPaymentService --> SeasonRepository
+AwardPaymentService --> AwardRepository
+AwardPaymentService --> AwardResultRepository
+AwardPaymentService --> AwardPaymentRepository
+AwardPaymentService --> MatchRepository
+AwardPaymentService --> MatchDetailRepository
+AwardPaymentService --> MatchDisplayNameUtil
+MatchDisplayNameUtil --> MatchDetailRepository
+
+SeasonRepository ..> Season
+AwardRepository ..> Award
+AwardResultRepository ..> AwardResult
+AwardPaymentRepository ..> AwardPayment
+MatchRepository ..> Match
+MatchDetailRepository ..> MatchDetail
+
+Season "1" -- "0..*" Round
+Round "1" -- "0..*" Match
+Match "1" -- "1..*" MatchDetail
+Team "1" -- "0..*" MatchDetail
+
+Season "1" -- "0..*" Award : season scope
+Match "1" -- "0..*" Award : match scope
+Award "1" -- "0..*" AwardResult
+Team "1" -- "0..*" AwardResult
+Player "1" -- "0..*" AwardResult
+AwardResult "1" -- "0..1" AwardPayment
+
+note right of AwardPaymentController
+  Main UI flow:
+  list.html -> payment.html -> receipt.html
+
+  Modal flow inside list.html:
+  season awards -> results modal
+  match list -> match awards modal
+end note
+
+@enduml

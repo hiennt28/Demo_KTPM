@@ -1,4 +1,3 @@
-// controller/MatchRegistrationController.java
 package com.vdqg.controller;
 
 import com.vdqg.entity.Match;
@@ -23,7 +22,6 @@ public class MatchRegistrationController {
 
     private final MatchRegistrationService regService;
 
-    // Bước 1, 2, 3: Chọn mùa -> vòng -> trận
     @GetMapping
     public String selectMatch(
             @RequestParam(required = false) Long seasonId,
@@ -43,7 +41,6 @@ public class MatchRegistrationController {
         return "registration/select";
     }
 
-    // Bước 4: Form chọn đội hình cho một MatchDetail
     @GetMapping("/match-detail/{matchDetailId}")
     public String showForm(@PathVariable Long matchDetailId, Model model) {
         MatchDetail matchDetail = regService.findMatchDetailById(matchDetailId);
@@ -56,7 +53,6 @@ public class MatchRegistrationController {
         return "registration/form";
     }
 
-    // Bước 5: Xác nhận đăng ký
     @PostMapping("/match-detail/{matchDetailId}/confirm")
     public String confirm(
             @PathVariable Long matchDetailId,

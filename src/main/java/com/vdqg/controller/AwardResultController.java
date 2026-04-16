@@ -1,6 +1,5 @@
 package com.vdqg.controller;
 
-import com.vdqg.dto.AwardResultFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.AwardResult;
 import com.vdqg.service.AwardResultService;
@@ -40,14 +39,22 @@ public class AwardResultController {
     }
 
     @GetMapping("/{resultId}/edit")
-    public String showEditForm(@PathVariable Long resultId, Model model) {
-        AwardResult result = awardResultService.findResultById(resultId);
-        Award award = result.getAward();
-        model.addAttribute("award", award);
-        model.addAttribute("awardResult", result);
-        populateOptions(model, award);
-        model.addAttribute("isEdit", true);
-        return "award/result-form";
+    public String showEditForm(@PathVariable Long resultId,
+                               Model model,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            AwardResult result = awardResultService.findEditableResultById(resultId);
+            Award award = result.getAward();
+            model.addAttribute("award", award);
+            model.addAttribute("awardResult", result);
+            populateOptions(model, award);
+            model.addAttribute("isEdit", true);
+            return "award/result-form";
+        } catch (IllegalStateException e) {
+            AwardResult result = awardResultService.findResultById(resultId);
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+            return "redirect:/award-results/award/" + result.getAward().getId();
+        }
     }
 
     @PostMapping("/award/{awardId}/save")
@@ -56,11 +63,13 @@ public class AwardResultController {
                        Model model,
                        RedirectAttributes redirectAttributes) {
         try {
+            boolean isCreate = awardResult.getId() == null;
             awardResultService.save(awardId, awardResult);
-            redirectAttributes.addFlashAttribute("successMsg",
-                    awardResult.getId() == null ? "Đã thêm người nhận giải!" : "Đã cập nhật người nhận giải!");
+            redirectAttributes.addFlashAttribute(
+                    "successMsg",
+                    isCreate ? "ÄÃ£ thÃªm ngÆ°á»i nháº­n giáº£i!" : "ÄÃ£ cáº­p nháº­t ngÆ°á»i nháº­n giáº£i!");
             return "redirect:/award-results/award/" + awardId;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             Award award = awardResultService.findAwardById(awardId);
             model.addAttribute("award", award);
             model.addAttribute("awardResult", awardResult);
@@ -75,14 +84,19 @@ public class AwardResultController {
     public String delete(@PathVariable Long resultId, RedirectAttributes redirectAttributes) {
         AwardResult result = awardResultService.findResultById(resultId);
         Long awardId = result.getAward().getId();
-        awardResultService.delete(resultId);
-        redirectAttributes.addFlashAttribute("successMsg", "Đã xóa người nhận giải!");
+
+        try {
+            awardResultService.delete(resultId);
+            redirectAttributes.addFlashAttribute("successMsg", "ÄÃ£ xÃ³a ngÆ°á»i nháº­n giáº£i!");
+        } catch (IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+        }
+
         return "redirect:/award-results/award/" + awardId;
     }
 
     private void populateOptions(Model model, Award award) {
-        AwardResultFormOptions options = awardResultService.getFormOptions(award);
-        model.addAttribute("teamOptions", options.teamOptions());
-        model.addAttribute("playerOptions", options.playerOptions());
+        model.addAttribute("teamOptions", awardResultService.getTeamOptions(award));
+        model.addAttribute("playerOptions", awardResultService.getPlayerOptions(award));
     }
 }

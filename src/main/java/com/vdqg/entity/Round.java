@@ -1,29 +1,43 @@
-// entity/Round.java
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "rounds")
-@Data @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Round {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "season_id", nullable = false)
-    private Season season;
-
     @Column(name = "round_name", nullable = false)
-    private String roundName;            // VD: "Vòng 1", "Tứ kết"
+    private String roundName;
 
     @Column(name = "round_order")
-    private Integer roundOrder;          // Thứ tự vòng
+    private Integer roundOrder;
 
-    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL)
-    private List<Match> matches;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "round_id", nullable = false)
+    @OrderBy("matchDate ASC, id ASC")
+    private List<Match> matches = new ArrayList<>();
 }

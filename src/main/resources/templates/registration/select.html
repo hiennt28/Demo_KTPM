@@ -7,44 +7,54 @@
 </head>
 <body class="bg-light">
 <div class="container mt-4">
-    <h2>Đăng Ký Cầu Thủ Cho Trận Đấu</h2>
-    <hr>
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Đăng ký thi đấu</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Đăng ký cầu thủ cho trận đấu</h2>
+        <a href="/" class="btn btn-outline-secondary">Về trang chủ</a>
+    </div>
 
     <div th:if="${successMsg}" class="alert alert-success" th:text="${successMsg}"></div>
     <div th:if="${errorMsg}" class="alert alert-danger" th:text="${errorMsg}"></div>
 
-    <div class="card p-3 mb-3">
+    <div class="card p-3 mb-3 shadow-sm">
         <h6 class="fw-bold mb-2">1. Chọn mùa giải</h6>
         <div class="d-flex gap-2 flex-wrap">
             <a th:each="s : ${seasons}"
                th:href="@{/registration(seasonId=${s.id})}"
                th:text="${s.seasonName}"
-               th:classappend="${s.id == selectedSeasonId}
-                               ? 'btn btn-primary' : 'btn btn-outline-primary'">
-            </a>
+               th:classappend="${s.id == selectedSeasonId} ? 'btn btn-primary' : 'btn btn-outline-primary'"></a>
         </div>
     </div>
 
-    <div th:if="${rounds}" class="card p-3 mb-3">
+    <div th:if="${rounds}" class="card p-3 mb-3 shadow-sm">
         <h6 class="fw-bold mb-2">2. Chọn vòng đấu</h6>
         <div class="d-flex gap-2 flex-wrap">
             <a th:each="r : ${rounds}"
                th:href="@{/registration(seasonId=${selectedSeasonId}, roundId=${r.id})}"
                th:text="${r.roundName}"
-               th:classappend="${r.id == selectedRoundId}
-                               ? 'btn btn-success' : 'btn btn-outline-success'">
-            </a>
+               th:classappend="${r.id == selectedRoundId} ? 'btn btn-success' : 'btn btn-outline-success'"></a>
         </div>
     </div>
 
     <div th:if="${matches}">
-        <h6 class="fw-bold">3. Chọn trận đấu</h6>
-        <table class="table table-bordered bg-white">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">3. Chọn trận đấu và đội đăng ký</h6>
+            <a th:if="${selectedSeasonId != null}" th:href="@{/registration(seasonId=${selectedSeasonId})}" class="btn btn-sm btn-outline-secondary">
+                Quay về bước chọn vòng
+            </a>
+        </div>
+
+        <table class="table table-bordered bg-white shadow-sm">
             <thead class="table-dark">
             <tr>
                 <th>#</th>
-                <th>Đội nhà</th>
-                <th>Đội khách</th>
+                <th>Cặp đấu</th>
                 <th>Ngày thi đấu</th>
                 <th>Sân</th>
                 <th>Trạng thái</th>
@@ -52,25 +62,25 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="m, i : ${matches}">
+            <tr th:each="match, i : ${matches}">
                 <td th:text="${i.count}"></td>
-                <td th:text="${m.matchDetails[0].team.teamName}"></td>
-                <td th:text="${m.matchDetails[1].team.teamName}"></td>
-                <td th:text="${#temporals.format(m.matchDate, 'dd/MM/yyyy HH:mm')}"></td>
-                <td th:text="${m.stadium}"></td>
+                <td th:text="${matchDisplayNames[match.id]}"></td>
+                <td th:text="${#temporals.format(match.matchDate, 'dd/MM/yyyy HH:mm')}"></td>
+                <td th:text="${match.stadium}"></td>
                 <td>
-                    <span th:text="${m.status}"
-                          th:class="${m.status == 'CHƯA DIỄN RA'} ? 'badge bg-warning text-dark' : 'badge bg-secondary'">
-                    </span>
+                    <span th:text="${match.status}"
+                          th:class="${match.status == 'CHƯA DIỄN RA'} ? 'badge bg-warning text-dark' : 'badge bg-secondary'"></span>
                 </td>
                 <td>
-                    <div th:each="md : ${m.matchDetails}">
+                    <div th:each="md : ${match.matchDetails}">
                         <a th:href="@{/registration/match-detail/{id}(id=${md.id})}"
                            th:text="'Đăng ký: ' + ${md.team.teamName}"
-                           class="btn btn-sm btn-primary mb-1">
-                        </a>
+                           class="btn btn-sm btn-primary mb-1"></a>
                     </div>
                 </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(matches)}">
+                <td colspan="6" class="text-center text-muted">Chưa có trận đấu nào trong vòng này.</td>
             </tr>
             </tbody>
         </table>

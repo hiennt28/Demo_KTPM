@@ -8,14 +8,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "award_results")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class AwardResult {
@@ -28,14 +32,6 @@ public class AwardResult {
     @JoinColumn(name = "award_id", nullable = false)
     private Award award;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id")
-    private Team team;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "player_id")
-    private Player player;
-
     @Column(name = "bank_account")
     private String bankAccount;
 
@@ -47,4 +43,22 @@ public class AwardResult {
 
     @Column(name = "payment_status")
     private String paymentStatus = "CHƯA THANH TOÁN";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "player_id")
+    private Player player;
+
+    @PrePersist
+    @PreUpdate
+    private void validateRecipient() {
+        boolean hasTeam = team != null;
+        boolean hasPlayer = player != null;
+        if (hasTeam == hasPlayer) {
+            throw new IllegalStateException("AwardResult phải gắn đúng một đối tượng nhận giải: Team hoặc Player.");
+        }
+    }
 }

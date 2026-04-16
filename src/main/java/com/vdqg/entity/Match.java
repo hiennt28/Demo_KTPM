@@ -1,17 +1,28 @@
-// entity/Match.java
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "matches")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Match {
@@ -20,21 +31,17 @@ public class Match {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "round_id", nullable = false)
-    private Round round;
-
     @Column(name = "match_date")
     private LocalDateTime matchDate;
 
     @Column(name = "stadium")
     private String stadium;
 
-    // CHƯA DIỄN RA | ĐANG DIỄN RA | KẾT THÚC
     @Column(name = "status")
     private String status = "CHƯA DIỄN RA";
 
-    // Quan hệ n-n với Team qua MatchDetail
-    @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<MatchDetail> matchDetails;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "match_id", nullable = false)
+    @OrderBy("id ASC")
+    private List<MatchDetail> matchDetails = new ArrayList<>();
 }

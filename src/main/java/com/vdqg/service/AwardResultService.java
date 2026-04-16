@@ -1,15 +1,17 @@
 package com.vdqg.service;
 
-import com.vdqg.dto.AwardResultFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.AwardResult;
 import com.vdqg.entity.MatchDetail;
 import com.vdqg.entity.Player;
 import com.vdqg.entity.PlayerContract;
+import com.vdqg.entity.Season;
 import com.vdqg.entity.Team;
+import com.vdqg.repository.AwardRepository;
 import com.vdqg.repository.AwardResultRepository;
 import com.vdqg.repository.MatchDetailRepository;
 import com.vdqg.repository.PlayerContractRepository;
+import com.vdqg.repository.SeasonRepository;
 import com.vdqg.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,20 +29,33 @@ public class AwardResultService {
     private static final String INDIVIDUAL_AWARD = "CÁ NHÂN";
     private static final String ACTIVE_CONTRACT = "HOẠT ĐỘNG";
     private static final String UNPAID_STATUS = "CHƯA THANH TOÁN";
+    private static final String PAID_STATUS = "ĐÃ THANH TOÁN";
+    private static final String LEGACY_TEAM_AWARD = "Táº¬P THá»‚";
+    private static final String LEGACY_INDIVIDUAL_AWARD = "CÃ NHÃ‚N";
+    private static final String LEGACY_ACTIVE_CONTRACT = "HOáº T Äá»˜NG";
+    private static final String LEGACY_PAID_STATUS = "ÄÃƒ THANH TOÃN";
 
-    private final AwardService awardService;
+    private final AwardRepository awardRepository;
     private final AwardResultRepository awardResultRepository;
     private final TeamRepository teamRepository;
     private final PlayerContractRepository playerContractRepository;
     private final MatchDetailRepository matchDetailRepository;
+    private final SeasonRepository seasonRepository;
 
     public Award findAwardById(Long awardId) {
-        return awardService.findById(awardId);
+        return awardRepository.findById(awardId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giải thưởng!"));
     }
 
     public AwardResult findResultById(Long resultId) {
         return awardResultRepository.findDetailedById(resultId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người nhận giải!"));
+    }
+
+    public AwardResult findEditableResultById(Long resultId) {
+        AwardResult result = findResultById(resultId);
+        ensureEditable(result);
+        return result;
     }
 
     public List<AwardResult> getResultsByAward(Long awardId) {
@@ -73,7 +88,7 @@ public class AwardResultService {
     @Transactional
     public void save(Long awardId, AwardResult input) {
         Award award = findAwardById(awardId);
-        AwardResult target = input.getId() != null ? findResultById(input.getId()) : new AwardResult();
+        AwardResult target = input.getId() != null ? findEditableResultById(input.getId()) : new AwardResult();
 
         target.setAward(award);
         target.setRepresentative(input.getRepresentative());
@@ -84,12 +99,12 @@ public class AwardResultService {
             target.setPaymentStatus(UNPAID_STATUS);
         }
 
-        if (TEAM_AWARD.equals(award.getAwardType())) {
+        if (isTeamAward(award.getAwardType())) {
             Team team = resolveTeam(input);
             validateTeamAward(award, target.getId(), team);
             target.setTeam(team);
             target.setPlayer(null);
-        } else if (INDIVIDUAL_AWARD.equals(award.getAwardType())) {
+        } else if (isIndividualAward(award.getAwardType())) {
             PlayerContract playerContract = resolveEligiblePlayerContract(award, input);
             validateIndividualAward(award, target.getId(), playerContract);
             target.setPlayer(playerContract.getPlayer());
@@ -102,13 +117,15 @@ public class AwardResultService {
     }
 
     @Transactional
-    public void saveExisting(AwardResult awardResult) {
-        awardResultRepository.save(awardResult);
+    public void delete(Long resultId) {
+        AwardResult result = findEditableResultById(resultId);
+        awardResultRepository.delete(result);
     }
 
-    @Transactional
-    public void delete(Long resultId) {
-        awardResultRepository.deleteById(resultId);
+    private void ensureEditable(AwardResult result) {
+        if (PAID_STATUS.equals(result.getPaymentStatus())) {
+            throw new IllegalStateException("Người nhận giải đã thanh toán nên không thể chỉnh sửa hoặc xóa.");
+        }
     }
 
     private Team resolveTeam(AwardResult input) {
@@ -140,16 +157,24 @@ public class AwardResultService {
                     .filter(Objects::nonNull)
                     .map(Team::getId)
                     .toList();
-            Long seasonId = award.getMatch().getRound().getSeason().getId();
+            Long seasonId = getSeasonIdForMatch(award.getMatch().getId());
 
-            return playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, ACTIVE_CONTRACT);
+            List<PlayerContract> activeContracts =
+                    playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, ACTIVE_CONTRACT);
+            return !activeContracts.isEmpty()
+                    ? activeContracts
+                    : getLegacyOrAllContractsByTeams(teamIds, seasonId);
         }
 
         if (award.getSeason() == null) {
             return List.of();
         }
 
-        return playerContractRepository.findBySeasonIdAndStatus(award.getSeason().getId(), ACTIVE_CONTRACT);
+        List<PlayerContract> activeContracts =
+                playerContractRepository.findBySeasonIdAndStatus(award.getSeason().getId(), ACTIVE_CONTRACT);
+        return !activeContracts.isEmpty()
+                ? activeContracts
+                : getLegacyOrAllContractsBySeason(award.getSeason().getId());
     }
 
     private void validateTeamAward(Award award, Long resultId, Team team) {
@@ -159,7 +184,6 @@ public class AwardResultService {
                     .filter(Objects::nonNull)
                     .map(Team::getId)
                     .anyMatch(teamId -> Objects.equals(teamId, team.getId()));
-
             if (!presentInMatch) {
                 throw new IllegalArgumentException("Đội nhận giải không thuộc trận đấu được chọn!");
             }
@@ -174,10 +198,6 @@ public class AwardResultService {
     }
 
     private void validateIndividualAward(Award award, Long resultId, PlayerContract playerContract) {
-        if (!ACTIVE_CONTRACT.equals(playerContract.getStatus())) {
-            throw new IllegalArgumentException("Cầu thủ được chọn không còn hợp đồng hoạt động!");
-        }
-
         if (award.getSeason() != null
                 && !Objects.equals(playerContract.getSeason().getId(), award.getSeason().getId())) {
             throw new IllegalArgumentException("Cầu thủ không thuộc mùa giải của hạng mục này!");
@@ -190,7 +210,7 @@ public class AwardResultService {
                     .filter(Objects::nonNull)
                     .map(Team::getId)
                     .anyMatch(teamId -> Objects.equals(teamId, playerContract.getTeam().getId()));
-            Long matchSeasonId = award.getMatch().getRound().getSeason().getId();
+            Long matchSeasonId = getSeasonIdForMatch(award.getMatch().getId());
 
             if (!inMatch || !Objects.equals(playerContract.getSeason().getId(), matchSeasonId)) {
                 throw new IllegalArgumentException("Cầu thủ không thuộc trận đấu hoặc mùa giải của hạng mục này!");
@@ -206,10 +226,33 @@ public class AwardResultService {
         }
     }
 
-    public AwardResultFormOptions getFormOptions(Award award) {
-        return new AwardResultFormOptions(
-                getTeamOptions(award),
-                getPlayerOptions(award)
-        );
+    private Long getSeasonIdForMatch(Long matchId) {
+        return seasonRepository.findByMatchId(matchId)
+                .map(Season::getId)
+                .orElseThrow(() -> new IllegalArgumentException("Không xác định được mùa giải của trận đấu!"));
+    }
+
+    private boolean isTeamAward(String awardType) {
+        return TEAM_AWARD.equals(awardType) || LEGACY_TEAM_AWARD.equals(awardType);
+    }
+
+    private boolean isIndividualAward(String awardType) {
+        return INDIVIDUAL_AWARD.equals(awardType) || LEGACY_INDIVIDUAL_AWARD.equals(awardType);
+    }
+
+    private List<PlayerContract> getLegacyOrAllContractsByTeams(List<Long> teamIds, Long seasonId) {
+        List<PlayerContract> legacyContracts =
+                playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, LEGACY_ACTIVE_CONTRACT);
+        return !legacyContracts.isEmpty()
+                ? legacyContracts
+                : playerContractRepository.findByTeamIdInAndSeasonId(teamIds, seasonId);
+    }
+
+    private List<PlayerContract> getLegacyOrAllContractsBySeason(Long seasonId) {
+        List<PlayerContract> legacyContracts =
+                playerContractRepository.findBySeasonIdAndStatus(seasonId, LEGACY_ACTIVE_CONTRACT);
+        return !legacyContracts.isEmpty()
+                ? legacyContracts
+                : playerContractRepository.findBySeasonId(seasonId);
     }
 }

@@ -77,13 +77,19 @@ public class AwardPaymentController {
     }
 
     @GetMapping("/result/{resultId}/pay")
-    public String showPayForm(@PathVariable Long resultId, Model model) {
-        AwardResult result = paymentService.findResultById(resultId);
-        if ("ĐÃ THANH TOÁN".equals(result.getPaymentStatus())) {
+    public String showPayForm(@PathVariable Long resultId,
+                              Model model,
+                              RedirectAttributes redirectAttributes) {
+        try {
+            AwardResult result = paymentService.findPayableResultById(resultId);
+            model.addAttribute("result", result);
+            model.addAttribute("seasonName", paymentService.resolveSeasonName(result));
+            model.addAttribute("selectedSeasonId", paymentService.resolveSeasonId(result));
+            return "payment/payment";
+        } catch (IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
             return "redirect:/payment";
         }
-        model.addAttribute("result", result);
-        return "payment/payment";
     }
 
     @PostMapping("/result/{resultId}/pay")
@@ -96,6 +102,8 @@ public class AwardPaymentController {
             AwardPayment payment = paymentService.processPayment(resultId, paymentMethod, note);
             model.addAttribute("payment", payment);
             model.addAttribute("result", payment.getAwardResult());
+            model.addAttribute("seasonName", paymentService.resolveSeasonName(payment.getAwardResult()));
+            model.addAttribute("selectedSeasonId", paymentService.resolveSeasonId(payment.getAwardResult()));
             return "payment/receipt";
         } catch (IllegalStateException e) {
             ra.addFlashAttribute("errorMsg", e.getMessage());

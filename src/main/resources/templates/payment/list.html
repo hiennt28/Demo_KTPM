@@ -7,19 +7,29 @@
 </head>
 <body class="bg-light">
 <div class="container mt-4">
-    <h2>Thanh Toán Giải Thưởng</h2>
-    <hr>
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Thanh toán giải thưởng</li>
+        </ol>
+    </nav>
+
+    <div class="mb-3">
+        <h2 class="mb-1">Thanh toán giải thưởng</h2>
+        <p class="text-muted mb-0">Chọn mùa giải, xem danh sách giải thưởng theo mùa hoặc theo trận và thực hiện thanh toán cho người nhận.</p>
+    </div>
 
     <div th:if="${errorMsg}" class="alert alert-danger" th:text="${errorMsg}"></div>
 
-    <div class="card p-3 mb-3">
-        <h6 class="fw-bold">1. Chọn mùa giải</h6>
+    <div class="card p-3 mb-3 shadow-sm">
+        <div class="mb-2">
+            <h6 class="fw-bold mb-0">1. Chọn mùa giải</h6>
+        </div>
         <div class="d-flex gap-2 flex-wrap">
             <a th:each="s : ${seasons}"
                th:href="@{/payment/season/{id}(id=${s.id})}"
                th:text="${s.seasonName}"
-               th:classappend="${selectedSeason != null and s.id == selectedSeason.id} ? 'btn btn-primary' : 'btn btn-outline-primary'">
-            </a>
+               th:classappend="${selectedSeason != null and s.id == selectedSeason.id} ? 'btn btn-primary' : 'btn btn-outline-primary'"></a>
         </div>
     </div>
 
@@ -29,85 +39,90 @@
     </div>
 
     <div th:if="${seasonAwards}">
-        <h6 class="fw-bold">2. Danh sách giải thưởng theo mùa</h6>
-        <table class="table table-bordered bg-white">
-            <thead class="table-dark">
-            <tr>
-                <th>#</th>
-                <th>Tên giải thưởng</th>
-                <th>Loại giải</th>
-                <th>Giá trị (VNĐ)</th>
-                <th>Điều kiện</th>
-                <th>Xem kết quả</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="a, i : ${seasonAwards}">
-                <td th:text="${i.count}"></td>
-                <td th:text="${a.awardName}"></td>
-                <td>
-                    <span th:text="${a.awardType}"
-                          th:class="${a.awardType == 'CÁ NHÂN'} ? 'badge bg-info text-dark' : 'badge bg-primary'">
-                    </span>
-                </td>
-                <td th:text="${#numbers.formatDecimal(a.prizeAmount,0,'COMMA',0,'POINT')}"></td>
-                <td th:text="${a.conditions}"></td>
-                <td>
-                    <button type="button"
-                            class="btn btn-sm btn-success js-open-results"
-                            th:attr="data-award-id=${a.id},data-award-name=${a.awardName}">
-                        Xem người nhận
-                    </button>
-                </td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(seasonAwards)}">
-                <td colspan="6" class="text-center text-muted">
-                    Không có giải thưởng theo mùa cho lựa chọn này.
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <div class="mb-2">
+            <h6 class="fw-bold mb-0">2. Giải thưởng theo mùa</h6>
+        </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-0">
+                <table class="table table-bordered bg-white mb-0 align-middle">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Tên giải thưởng</th>
+                        <th>Loại giải</th>
+                        <th>Giá trị (VNĐ)</th>
+                        <th>Điều kiện</th>
+                        <th>Xem kết quả</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="a, i : ${seasonAwards}">
+                        <td th:text="${i.count}"></td>
+                        <td th:text="${a.awardName}"></td>
+                        <td>
+                            <span th:text="${a.awardType}"
+                                  th:class="${a.awardType == 'CÁ NHÂN'} ? 'badge bg-info text-dark' : 'badge bg-primary'"></span>
+                        </td>
+                        <td th:text="${#numbers.formatDecimal(a.prizeAmount,0,'COMMA',0,'POINT')}"></td>
+                        <td th:text="${a.conditions}"></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-success js-open-results"
+                                    th:attr="data-award-id=${a.id},data-award-name=${a.awardName}">
+                                Xem người nhận
+                            </button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(seasonAwards)}">
+                        <td colspan="6" class="text-center text-muted py-4">Không có giải thưởng theo mùa cho lựa chọn này.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div th:if="${matches}" class="mt-4">
-        <h6 class="fw-bold">3. Chọn trận đấu để xem giải thưởng theo trận</h6>
-        <table class="table table-bordered bg-white">
-            <thead class="table-dark">
-            <tr>
-                <th>#</th>
-                <th>Trận đấu</th>
-                <th>Thời gian</th>
-                <th>Sân</th>
-                <th>Thao tác</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="m, i : ${matches}">
-                <td th:text="${i.count}"></td>
-                <td th:text="${matchDisplayNames[m.id]}"></td>
-                <td th:text="${m.matchDate != null ? #temporals.format(m.matchDate, 'dd/MM/yyyy HH:mm') : ''}"></td>
-                <td th:text="${m.stadium}"></td>
-                <td>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-primary js-open-match-awards"
-                            th:classappend="${selectedMatchId != null and selectedMatchId == m.id} ? ' btn-primary text-white' : ''"
-                            th:attr="data-match-id=${m.id},data-match-name=${matchDisplayNames[m.id]}">
-                        Xem giải theo trận
-                    </button>
-                </td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(matches)}">
-                <td colspan="5" class="text-center text-muted">
-                    Không có trận đấu nào thuộc mùa giải này.
-                </td>
-            </tr>
-            </tbody>
-        </table>
+    <div th:if="${matches}">
+        <div class="mb-2">
+            <h6 class="fw-bold mb-0">3. Giải thưởng theo trận</h6>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-bordered bg-white mb-0 align-middle">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Trận đấu</th>
+                        <th>Thời gian</th>
+                        <th>Sân</th>
+                        <th>Thao tác</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="m, i : ${matches}">
+                        <td th:text="${i.count}"></td>
+                        <td th:text="${matchDisplayNames[m.id]}"></td>
+                        <td th:text="${m.matchDate != null ? #temporals.format(m.matchDate, 'dd/MM/yyyy HH:mm') : ''}"></td>
+                        <td th:text="${m.stadium}"></td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary js-open-match-awards"
+                                    th:classappend="${selectedMatchId != null and selectedMatchId == m.id} ? ' btn-primary text-white' : ''"
+                                    th:attr="data-match-id=${m.id},data-match-name=${matchDisplayNames[m.id]}">
+                                Xem giải theo trận
+                            </button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(matches)}">
+                        <td colspan="5" class="text-center text-muted py-4">Không có trận đấu nào thuộc mùa giải này.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<div th:fragment="matchAwardsContent"
-     th:classappend="${fragmentOnly == true} ? '' : ' d-none'">
+<div th:fragment="matchAwardsContent" th:classappend="${fragmentOnly == true} ? '' : ' d-none'">
     <div class="table-responsive">
         <table class="table table-bordered align-middle mb-0">
             <thead class="table-dark">
@@ -126,23 +141,19 @@
                 <td th:text="${a.awardName}"></td>
                 <td>
                     <span th:text="${a.awardType}"
-                          th:class="${a.awardType == 'CÁ NHÂN'} ? 'badge bg-info text-dark' : 'badge bg-primary'">
-                    </span>
+                          th:class="${a.awardType == 'CÁ NHÂN'} ? 'badge bg-info text-dark' : 'badge bg-primary'"></span>
                 </td>
                 <td th:text="${#numbers.formatDecimal(a.prizeAmount,0,'COMMA',0,'POINT')}"></td>
                 <td th:text="${a.conditions}"></td>
                 <td>
-                    <button type="button"
-                            class="btn btn-sm btn-success js-open-results"
+                    <button type="button" class="btn btn-sm btn-success js-open-results"
                             th:attr="data-award-id=${a.id},data-award-name=${a.awardName}">
                         Xem người nhận
                     </button>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(awards)}">
-                <td colspan="6" class="text-center text-muted">
-                    Trận đấu này chưa có giải thưởng nào.
-                </td>
+                <td colspan="6" class="text-center text-muted">Trận đấu này chưa có giải thưởng nào.</td>
             </tr>
             </tbody>
         </table>
@@ -177,8 +188,7 @@
     </div>
 </div>
 
-<div th:fragment="resultsContent"
-     th:classappend="${fragmentOnly == true} ? '' : ' d-none'">
+<div th:fragment="resultsContent" th:classappend="${fragmentOnly == true} ? '' : ' d-none'">
     <div class="table-responsive">
         <table class="table table-bordered align-middle mb-0">
             <thead class="table-dark">
@@ -204,21 +214,17 @@
                 <td th:text="${r.bankName}"></td>
                 <td>
                     <span th:text="${r.paymentStatus}"
-                          th:class="${r.paymentStatus == 'ĐÃ THANH TOÁN'} ? 'badge bg-success' : 'badge bg-warning text-dark'">
-                    </span>
+                          th:class="${r.paymentStatus == 'ĐÃ THANH TOÁN'} ? 'badge bg-success' : 'badge bg-warning text-dark'"></span>
                 </td>
                 <td>
                     <a th:if="${r.paymentStatus == 'CHƯA THANH TOÁN'}"
                        th:href="@{/payment/result/{id}/pay(id=${r.id})}"
                        class="btn btn-sm btn-primary">Thanh toán</a>
-                    <span th:if="${r.paymentStatus == 'ĐÃ THANH TOÁN'}"
-                          class="text-muted small">Đã xử lý</span>
+                    <span th:if="${r.paymentStatus == 'ĐÃ THANH TOÁN'}" class="text-muted small">Đã xử lý</span>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(results)}">
-                <td colspan="7" class="text-center text-muted">
-                    Chưa có người nhận giải cho hạng mục này.
-                </td>
+                <td colspan="7" class="text-center text-muted">Chưa có người nhận giải cho hạng mục này.</td>
             </tr>
             </tbody>
         </table>
@@ -244,9 +250,7 @@
 
         try {
             const response = await fetch('/payment/match/' + matchId + '/modal', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
             if (!response.ok) {
@@ -266,9 +270,7 @@
 
         try {
             const response = await fetch('/payment/award/' + awardId + '/modal', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
             if (!response.ok) {

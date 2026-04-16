@@ -1,19 +1,28 @@
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "awards")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Award {
@@ -26,12 +35,10 @@ public class Award {
     @Column(name = "award_name", nullable = false)
     private String awardName;
 
-    // CÁ NHÂN | TẬP THỂ
     @NotBlank(message = "Loại giải không được để trống")
     @Column(name = "award_type")
     private String awardType;
 
-    // MÙA GIẢI | TRẬN ĐẤU
     @NotBlank(message = "Phạm vi áp dụng không được để trống")
     @Column(name = "scope")
     private String scope;
@@ -52,24 +59,6 @@ public class Award {
     @Column(name = "conditions", length = 500)
     private String conditions;
 
-    // ĐANG ÁP DỤNG | HỦY ÁP DỤNG
     @Column(name = "status")
     private String status = "ĐANG ÁP DỤNG";
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

@@ -1,15 +1,19 @@
 package com.vdqg.controller;
 
-import com.vdqg.dto.AwardFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.Match;
+import com.vdqg.entity.Season;
 import com.vdqg.service.AwardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
@@ -56,9 +60,11 @@ public class AwardController {
             return "award/form";
         }
         try {
+            boolean isCreate = award.getId() == null;
             awardService.save(award);
-            redirectAttributes.addFlashAttribute("successMsg",
-                    award.getId() == null ? "Thêm giải thưởng thành công!" : "Cập nhật thành công!");
+            redirectAttributes.addFlashAttribute(
+                    "successMsg",
+                    isCreate ? "Thêm giải thưởng thành công!" : "Cập nhật thành công!");
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMsg", e.getMessage());
             populateMatchOptions(model);
@@ -76,9 +82,10 @@ public class AwardController {
     }
 
     private void populateMatchOptions(Model model) {
-        AwardFormOptions options = awardService.getFormOptions();
-        model.addAttribute("seasonOptions", options.seasonOptions());
-        model.addAttribute("matches", options.matches());
-        model.addAttribute("matchDisplayNames", options.matchDisplayNames());
+        List<Season> seasons = awardService.getSeasonOptions();
+        List<Match> matches = awardService.getAllMatches();
+        model.addAttribute("seasonOptions", seasons);
+        model.addAttribute("matches", matches);
+        model.addAttribute("matchDisplayNames", awardService.getDisplayNamesForMatches(matches));
     }
-}
+}   

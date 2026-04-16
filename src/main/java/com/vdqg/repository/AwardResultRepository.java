@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AwardResultRepository extends JpaRepository<AwardResult, Long> {
-    @EntityGraph(attributePaths = {"award", "team", "player"})
+    @EntityGraph(attributePaths = {"award", "award.season", "award.match", "team", "player"})
     List<AwardResult> findByAwardId(Long awardId);
 
-    @EntityGraph(attributePaths = {"award", "team", "player"})
+    @EntityGraph(attributePaths = {"award", "award.season", "award.match", "team", "player"})
     Optional<AwardResult> findDetailedById(Long id);
 
     boolean existsByAwardIdAndTeamId(Long awardId, Long teamId);

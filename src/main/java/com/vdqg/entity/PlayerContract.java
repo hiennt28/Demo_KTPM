@@ -1,14 +1,28 @@
-// entity/PlayerContract.java  ← Thực thể trung gian Player ↔ Team
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "player_contracts",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"player_id","team_id","season_id"}))
-@Data @NoArgsConstructor @AllArgsConstructor
+@Table(name = "player_contracts", uniqueConstraints = @UniqueConstraint(columnNames = {"player_id", "team_id", "season_id"}))
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PlayerContract {
 
     @Id
@@ -30,7 +44,6 @@ public class PlayerContract {
     @Column(name = "jersey_number")
     private Integer jerseyNumber;
 
-    // BÌNH THƯỜNG | CHẤN THƯƠNG | ĐÌNH CHỈ
     @Column(name = "health_status")
     private String healthStatus = "BÌNH THƯỜNG";
 
@@ -46,7 +59,9 @@ public class PlayerContract {
     @Column(name = "contract_end")
     private LocalDate contractEnd;
 
-    // HOẠT ĐỘNG | HẾT HẠN
     @Column(name = "status")
     private String status = "HOẠT ĐỘNG";
+
+    @Column(name = "is_foreign")
+    private Boolean isForeign = Boolean.FALSE;
 }

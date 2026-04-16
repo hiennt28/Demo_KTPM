@@ -15,4 +15,10 @@ public interface PlayerContractRepository extends JpaRepository<PlayerContract, 
 
     @EntityGraph(attributePaths = {"player", "team", "season"})
     List<PlayerContract> findByTeamIdInAndSeasonIdAndStatus(List<Long> teamIds, Long seasonId, String status);
+
+    @EntityGraph(attributePaths = {"player", "team", "season"})
+    List<PlayerContract> findBySeasonId(Long seasonId);
+
+    @EntityGraph(attributePaths = {"player", "team", "season"})
+    List<PlayerContract> findByTeamIdInAndSeasonId(List<Long> teamIds, Long seasonId);
 }

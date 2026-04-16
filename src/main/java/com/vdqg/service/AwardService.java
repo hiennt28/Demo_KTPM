@@ -1,17 +1,17 @@
 package com.vdqg.service;
 
-import com.vdqg.dto.AwardFormOptions;
 import com.vdqg.entity.Award;
 import com.vdqg.entity.Match;
+import com.vdqg.entity.MatchDetail;
 import com.vdqg.entity.Season;
 import com.vdqg.repository.AwardRepository;
 import com.vdqg.repository.MatchRepository;
 import com.vdqg.repository.SeasonRepository;
-import com.vdqg.util.MatchDisplayNameUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -23,11 +23,11 @@ public class AwardService {
     private static final String ACTIVE_AWARD_STATUS = "ĐANG ÁP DỤNG";
     private static final String CANCELED_AWARD_STATUS = "HỦY ÁP DỤNG";
     private static final String SEASON_SCOPE = "MÙA GIẢI";
+    private static final String MATCH_SCOPE = "TRẬN ĐẤU";
 
     private final AwardRepository awardRepository;
     private final MatchRepository matchRepository;
     private final SeasonRepository seasonRepository;
-    private final MatchDisplayNameUtil matchDisplayNameUtil;
 
     public List<Award> getAllActiveAwards() {
         return awardRepository.findByStatus(ACTIVE_AWARD_STATUS);
@@ -67,9 +67,12 @@ public class AwardService {
         List<Long> matchIds = matches.stream()
                 .map(Match::getId)
                 .filter(Objects::nonNull)
+                .distinct()
                 .toList();
-
-        return matchDisplayNameUtil.buildDisplayNames(matchIds);
+        if (matchIds.isEmpty()) {
+            return Map.of();
+        }
+        return buildDisplayNames(matchRepository.findByIdIn(matchIds));
     }
 
     @Transactional(readOnly = true)
@@ -81,8 +84,10 @@ public class AwardService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-
-        return matchDisplayNameUtil.buildDisplayNames(matchIds);
+        if (matchIds.isEmpty()) {
+            return Map.of();
+        }
+        return buildDisplayNames(matchRepository.findByIdIn(matchIds));
     }
 
     @Transactional
@@ -114,11 +119,20 @@ public class AwardService {
         }
 
         if (SEASON_SCOPE.equals(award.getScope())) {
+            if (award.getSeason() == null) {
+                throw new IllegalArgumentException("Bạn phải chọn mùa giải cho giải thưởng theo mùa!");
+            }
             award.setMatch(null);
-        } else {
+        } else if (MATCH_SCOPE.equals(award.getScope())) {
+            if (award.getMatch() == null) {
+                throw new IllegalArgumentException("Bạn phải chọn trận đấu cho giải thưởng theo trận!");
+            }
             award.setSeason(null);
+        } else {
+            throw new IllegalArgumentException("Phạm vi áp dụng không hợp lệ!");
         }
 
+        award.setStatus(ACTIVE_AWARD_STATUS);
         awardRepository.save(award);
     }
 
@@ -129,10 +143,45 @@ public class AwardService {
         awardRepository.save(award);
     }
 
-    public AwardFormOptions getFormOptions() {
-        List<Season> seasons = getSeasonOptions();
-        List<Match> matches = getAllMatches();
-        Map<Long, String> displayNames = getDisplayNamesForMatches(matches);
-        return new AwardFormOptions(seasons, matches, displayNames);
+    private Map<Long, String> buildDisplayNames(List<Match> matches) {
+        Map<Long, String> result = new LinkedHashMap<>();
+        for (Match match : matches) {
+            if (match == null || match.getId() == null) {
+                continue;
+            }
+            result.put(match.getId(), buildDisplayName(match));
+        }
+        return result;
+    }
+
+    private String buildDisplayName(Match match) {
+        if (match == null) {
+            return "Chưa xác định vs Chưa xác định";
+        }
+
+        List<MatchDetail> details = match.getMatchDetails() != null ? match.getMatchDetails() : List.of();
+        String homeTeam = resolveTeamName(details, "NHÀ", 0);
+        String awayTeam = resolveTeamName(details, "KHÁCH", 1);
+        return homeTeam + " vs " + awayTeam;
+    }
+
+    private String resolveTeamName(List<MatchDetail> details, String role, int fallbackIndex) {
+        for (MatchDetail detail : details) {
+            if (detail != null
+                    && Objects.equals(role, detail.getRole())
+                    && detail.getTeam() != null
+                    && detail.getTeam().getTeamName() != null) {
+                return detail.getTeam().getTeamName();
+            }
+        }
+
+        if (fallbackIndex >= 0 && fallbackIndex < details.size()) {
+            MatchDetail detail = details.get(fallbackIndex);
+            if (detail != null && detail.getTeam() != null && detail.getTeam().getTeamName() != null) {
+                return detail.getTeam().getTeamName();
+            }
+        }
+
+        return "Chưa xác định";
     }
 }

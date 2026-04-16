@@ -1,35 +1,42 @@
-// entity/MatchDetail.java  ← Thực thể trung gian Match ↔ Team
 package com.vdqg.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "match_details",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"match_id", "team_id"}))
-@Data @NoArgsConstructor @AllArgsConstructor
+@Table(name = "match_details", uniqueConstraints = @UniqueConstraint(columnNames = {"match_id", "team_id"}))
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class MatchDetail {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id", nullable = false)
-    private Match match;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
-    private Team team;
-
-    // NHÀ | KHÁCH
     @Column(name = "role")
     private String role;
 
     @Column(name = "score")
     private Integer score = 0;
 
-    // Kết quả sau trận: THẮNG | THUA | HÒA
     @Column(name = "result")
     private String result;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", nullable = false)
+    private Team team;
 }

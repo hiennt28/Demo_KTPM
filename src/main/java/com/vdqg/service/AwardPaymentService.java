@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,8 +31,6 @@ public class AwardPaymentService {
     private static final String PAYMENT_SUCCESS = "THÀNH CÔNG";
     private static final String HOME_ROLE = "NHÀ";
     private static final String AWAY_ROLE = "KHÁCH";
-    private static final String LEGACY_ACTIVE_AWARD_STATUS = "ÄANG ÃP Dá»¤NG";
-    private static final String LEGACY_PAID_STATUS = "ÄÃƒ THANH TOÃN";
 
     private final SeasonRepository seasonRepository;
     private final AwardRepository awardRepository;
@@ -50,10 +49,9 @@ public class AwardPaymentService {
 
     public List<Award> getAwardsBySeason(Long seasonId) {
         findSeasonById(seasonId);
-        List<Award> awards = awardRepository.findBySeasonIdAndStatus(seasonId, ACTIVE_AWARD_STATUS);
-        return !awards.isEmpty()
-                ? awards
-                : awardRepository.findBySeasonIdAndStatus(seasonId, LEGACY_ACTIVE_AWARD_STATUS);
+        return awardRepository.findBySeasonId(seasonId).stream()
+                .filter(this::isActiveAward)
+                .toList();
     }
 
     public List<Match> getMatchesBySeason(Long seasonId) {
@@ -82,10 +80,9 @@ public class AwardPaymentService {
     }
 
     public List<Award> getAwardsByMatch(Long matchId) {
-        List<Award> awards = awardRepository.findByMatchIdAndStatus(matchId, ACTIVE_AWARD_STATUS);
-        return !awards.isEmpty()
-                ? awards
-                : awardRepository.findByMatchIdAndStatus(matchId, LEGACY_ACTIVE_AWARD_STATUS);
+        return awardRepository.findByMatchId(matchId).stream()
+                .filter(this::isActiveAward)
+                .toList();
     }
 
     public Award findAwardById(Long awardId) {
@@ -167,14 +164,17 @@ public class AwardPaymentService {
     }
 
     private void ensurePayable(AwardResult result) {
-        if (isPaid(result.getPaymentStatus())
-                || paymentRepository.existsByAwardResultId(result.getId())) {
+        if (isPaid(result.getPaymentStatus()) || paymentRepository.existsByAwardResultId(result.getId())) {
             throw new IllegalStateException("Giải thưởng này đã được thanh toán trước đó!");
         }
     }
 
+    private boolean isActiveAward(Award award) {
+        return sameText(award.getStatus(), ACTIVE_AWARD_STATUS);
+    }
+
     private boolean isPaid(String paymentStatus) {
-        return PAID_STATUS.equals(paymentStatus) || LEGACY_PAID_STATUS.equals(paymentStatus);
+        return sameText(paymentStatus, PAID_STATUS);
     }
 
     private String buildDisplayName(Match match) {
@@ -187,7 +187,7 @@ public class AwardPaymentService {
     private String resolveTeamName(List<MatchDetail> details, String role, int fallbackIndex) {
         for (MatchDetail detail : details) {
             if (detail != null
-                    && role.equals(detail.getRole())
+                    && sameText(detail.getRole(), role)
                     && detail.getTeam() != null
                     && detail.getTeam().getTeamName() != null) {
                 return detail.getTeam().getTeamName();
@@ -202,5 +202,28 @@ public class AwardPaymentService {
         }
 
         return UNKNOWN_LABEL;
+    }
+
+    private boolean sameText(String actual, String expected) {
+        return normalizeText(actual).equals(normalizeText(expected));
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (looksMojibake(value)) {
+            return new String(value.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+        }
+        return value;
+    }
+
+    private boolean looksMojibake(String value) {
+        return value.contains("Ã")
+                || value.contains("Ä")
+                || value.contains("Æ")
+                || value.contains("Â")
+                || value.contains("áº")
+                || value.contains("á»");
     }
 }

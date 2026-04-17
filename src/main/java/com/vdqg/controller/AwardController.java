@@ -88,4 +88,4 @@ public class AwardController {
         model.addAttribute("matches", matches);
         model.addAttribute("matchDisplayNames", awardService.getDisplayNamesForMatches(matches));
     }
-}   
+}

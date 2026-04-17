@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -30,10 +31,6 @@ public class AwardResultService {
     private static final String ACTIVE_CONTRACT = "HOẠT ĐỘNG";
     private static final String UNPAID_STATUS = "CHƯA THANH TOÁN";
     private static final String PAID_STATUS = "ĐÃ THANH TOÁN";
-    private static final String LEGACY_TEAM_AWARD = "Táº¬P THá»‚";
-    private static final String LEGACY_INDIVIDUAL_AWARD = "CÃ NHÃ‚N";
-    private static final String LEGACY_ACTIVE_CONTRACT = "HOáº T Äá»˜NG";
-    private static final String LEGACY_PAID_STATUS = "ÄÃƒ THANH TOÃN";
 
     private final AwardRepository awardRepository;
     private final AwardResultRepository awardResultRepository;
@@ -123,7 +120,7 @@ public class AwardResultService {
     }
 
     private void ensureEditable(AwardResult result) {
-        if (PAID_STATUS.equals(result.getPaymentStatus())) {
+        if (sameText(result.getPaymentStatus(), PAID_STATUS)) {
             throw new IllegalStateException("Người nhận giải đã thanh toán nên không thể chỉnh sửa hoặc xóa.");
         }
     }
@@ -159,22 +156,24 @@ public class AwardResultService {
                     .toList();
             Long seasonId = getSeasonIdForMatch(award.getMatch().getId());
 
-            List<PlayerContract> activeContracts =
-                    playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, ACTIVE_CONTRACT);
+            List<PlayerContract> activeContracts = playerContractRepository.findByTeamIdInAndSeasonId(teamIds, seasonId).stream()
+                    .filter(this::isActiveContract)
+                    .toList();
             return !activeContracts.isEmpty()
                     ? activeContracts
-                    : getLegacyOrAllContractsByTeams(teamIds, seasonId);
+                    : playerContractRepository.findByTeamIdInAndSeasonId(teamIds, seasonId);
         }
 
         if (award.getSeason() == null) {
             return List.of();
         }
 
-        List<PlayerContract> activeContracts =
-                playerContractRepository.findBySeasonIdAndStatus(award.getSeason().getId(), ACTIVE_CONTRACT);
+        List<PlayerContract> activeContracts = playerContractRepository.findBySeasonId(award.getSeason().getId()).stream()
+                .filter(this::isActiveContract)
+                .toList();
         return !activeContracts.isEmpty()
                 ? activeContracts
-                : getLegacyOrAllContractsBySeason(award.getSeason().getId());
+                : playerContractRepository.findBySeasonId(award.getSeason().getId());
     }
 
     private void validateTeamAward(Award award, Long resultId, Team team) {
@@ -233,26 +232,37 @@ public class AwardResultService {
     }
 
     private boolean isTeamAward(String awardType) {
-        return TEAM_AWARD.equals(awardType) || LEGACY_TEAM_AWARD.equals(awardType);
+        return sameText(awardType, TEAM_AWARD);
     }
 
     private boolean isIndividualAward(String awardType) {
-        return INDIVIDUAL_AWARD.equals(awardType) || LEGACY_INDIVIDUAL_AWARD.equals(awardType);
+        return sameText(awardType, INDIVIDUAL_AWARD);
     }
 
-    private List<PlayerContract> getLegacyOrAllContractsByTeams(List<Long> teamIds, Long seasonId) {
-        List<PlayerContract> legacyContracts =
-                playerContractRepository.findByTeamIdInAndSeasonIdAndStatus(teamIds, seasonId, LEGACY_ACTIVE_CONTRACT);
-        return !legacyContracts.isEmpty()
-                ? legacyContracts
-                : playerContractRepository.findByTeamIdInAndSeasonId(teamIds, seasonId);
+    private boolean isActiveContract(PlayerContract contract) {
+        return contract != null && sameText(contract.getStatus(), ACTIVE_CONTRACT);
     }
 
-    private List<PlayerContract> getLegacyOrAllContractsBySeason(Long seasonId) {
-        List<PlayerContract> legacyContracts =
-                playerContractRepository.findBySeasonIdAndStatus(seasonId, LEGACY_ACTIVE_CONTRACT);
-        return !legacyContracts.isEmpty()
-                ? legacyContracts
-                : playerContractRepository.findBySeasonId(seasonId);
+    private boolean sameText(String actual, String expected) {
+        return normalizeText(actual).equals(normalizeText(expected));
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (looksMojibake(value)) {
+            return new String(value.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+        }
+        return value;
+    }
+
+    private boolean looksMojibake(String value) {
+        return value.contains("Ã")
+                || value.contains("Ä")
+                || value.contains("Æ")
+                || value.contains("Â")
+                || value.contains("áº")
+                || value.contains("á»");
     }
 }

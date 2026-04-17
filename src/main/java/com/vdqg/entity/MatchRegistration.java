@@ -53,8 +53,4 @@ public class MatchRegistration {
             registeredAt = LocalDateTime.now();
         }
     }
-
-    public void addRegistrationDetail(RegistrationDetail registrationDetail) {
-        registrationDetails.add(registrationDetail);
-    }
 }

@@ -203,7 +203,7 @@ public class MatchRegistrationService {
             detail.setPlayerContract(contract);
             detail.setRole(RegistrationDetail.STARTING_ROLE);
             detail.setPlayingPosition(resolvePlayingPosition(contract, playingPositions));
-            registration.addRegistrationDetail(detail);
+            registration.getRegistrationDetails().add(detail);
         }
 
         for (Long contractId : safeSubstituteIds) {
@@ -212,7 +212,7 @@ public class MatchRegistrationService {
             detail.setPlayerContract(contract);
             detail.setRole(RegistrationDetail.SUBSTITUTE_ROLE);
             detail.setPlayingPosition(resolvePlayingPosition(contract, playingPositions));
-            registration.addRegistrationDetail(detail);
+            registration.getRegistrationDetails().add(detail);
         }
 
         registrationRepository.save(registration);

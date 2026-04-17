@@ -8,9 +8,15 @@ import java.util.List;
 public interface AwardRepository extends JpaRepository<Award, Long> {
     List<Award> findByStatus(String status);
 
+    List<Award> findBySeasonId(Long seasonId);
+
     List<Award> findBySeasonIdAndStatus(Long seasonId, String status);
 
+    List<Award> findBySeasonSeasonName(String seasonName);
+
     List<Award> findBySeasonSeasonNameAndStatus(String seasonName, String status);
+
+    List<Award> findByMatchId(Long matchId);
 
     List<Award> findByMatchIdAndStatus(Long matchId, String status);
 

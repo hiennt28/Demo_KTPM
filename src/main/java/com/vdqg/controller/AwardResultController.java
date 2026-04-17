@@ -67,7 +67,7 @@ public class AwardResultController {
             awardResultService.save(awardId, awardResult);
             redirectAttributes.addFlashAttribute(
                     "successMsg",
-                    isCreate ? "ÄÃ£ thÃªm ngÆ°á»i nháº­n giáº£i!" : "ÄÃ£ cáº­p nháº­t ngÆ°á»i nháº­n giáº£i!");
+                    isCreate ? "Đã thêm người nhận giải!" : "Đã cập nhật người nhận giải!");
             return "redirect:/award-results/award/" + awardId;
         } catch (IllegalArgumentException | IllegalStateException e) {
             Award award = awardResultService.findAwardById(awardId);
@@ -87,7 +87,7 @@ public class AwardResultController {
 
         try {
             awardResultService.delete(resultId);
-            redirectAttributes.addFlashAttribute("successMsg", "ÄÃ£ xÃ³a ngÆ°á»i nháº­n giáº£i!");
+            redirectAttributes.addFlashAttribute("successMsg", "Đã xóa người nhận giải!");
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
         }

@@ -67,8 +67,7 @@
             | Sân: <span th:text="${match.stadium}"></span>
             | Đội đăng ký: <span th:text="${selectedMatchDetail.team.teamName}"></span>
         </div>
-        <a th:href="@{/registration(seasonId=${selectedSeasonId}, roundId=${selectedRoundId})}"
-           class="btn btn-outline-secondary">Về bước chọn trận đấu</a>
+       
     </div>
 
     <div th:if="${errorMsg}" class="alert alert-danger" th:text="${errorMsg}"></div>
